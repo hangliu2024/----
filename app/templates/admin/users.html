@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-people"></i> 用户管理</h4>
+                <a href="{{ url_for('admin.add_user') }}" class="btn btn-light btn-sm">
+                    <i class="bi bi-plus-circle"></i> 新增用户
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- 搜索和筛选 -->
+            <form method="GET" class="mb-4">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="search" placeholder="搜索用户名/邮箱/姓名/工号" value="{{ search }}">
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" name="role">
+                            <option value="">全部角色</option>
+                            <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>管理员</option>
+                            <option value="department_admin" {% if role_filter == 'department_admin' %}selected{% endif %}>部门管理员</option>
+                            <option value="user" {% if role_filter == 'user' %}selected{% endif %}>普通用户</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" name="status">
+                            <option value="">全部状态</option>
+                            <option value="active" {% if status_filter == 'active' %}selected{% endif %}>已启用</option>
+                            <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>已禁用</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" name="dept">
+                            <option value="">全部部门</option>
+                            {% for dept in departments %}
+                            <option value="{{ dept.id }}" {% if dept_filter == dept.id|string %}selected{% endif %}>{{ dept.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> 搜索</button>
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> 重置</a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- 用户列表 -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>用户名</th>
+                            <th>真实姓名</th>
+                            <th>邮箱</th>
+                            <th>工号</th>
+                            <th>部门</th>
+                            <th>角色</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.real_name or '-' }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.emp_id or '-' }}</td>
+                            <td>{{ user.department.name if user.department else '-' }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                <span class="badge bg-danger">管理员</span>
+                                {% elif user.role == 'department_admin' %}
+                                <span class="badge bg-warning">部门管理员</span>
+                                {% else %}
+                                <span class="badge bg-info">普通用户</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                <span class="badge bg-success">启用</span>
+                                {% else %}
+                                <span class="badge bg-secondary">禁用</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-outline-primary" title="编辑">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{{ url_for('admin.reset_password', user_id=user.id) }}" class="btn btn-outline-warning" title="重置密码">
+                                        <i class="bi bi-key"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-{{ 'success' if not user.is_active else 'secondary' }}" 
+                                            onclick="toggleUser({{ user.id }}, this)" title="{{ '启用' if not user.is_active else '禁用' }}">
+                                        <i class="bi bi-{{ 'play-circle' if not user.is_active else 'pause-circle' }}"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')" title="删除">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center text-muted">暂无用户数据</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
+                        <a class="page-link" href="{{ url_for('admin.users', page=pagination.prev_num, search=search, role=role_filter, status=status_filter, dept=dept_filter) }}">上一页</a>
+                    </li>
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                            <a class="page-link" href="{{ url_for('admin.users', page=page_num, search=search, role=role_filter, status=status_filter, dept=dept_filter) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
+                        <a class="page-link" href="{{ url_for('admin.users', page=pagination.next_num, search=search, role=role_filter, status=status_filter, dept=dept_filter) }}">下一页</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            <!-- 统计信息 -->
+            <div class="text-muted mt-3">
+                共 {{ pagination.total }} 条记录，当前第 {{ pagination.page }} 页，共 {{ pagination.pages }} 页
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除用户 <strong id="deleteUsername"></strong> 吗？此操作不可恢复！</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let deleteUserId = null;
+
+function toggleUser(userId, btn) {
+    fetch(`/admin/users/toggle/${userId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(error => {
+        alert('操作失败：' + error);
+    });
+}
+
+function deleteUser(userId, username) {
+    deleteUserId = userId;
+    document.getElementById('deleteUsername').textContent = username;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (deleteUserId) {
+        fetch(`/admin/users/delete/${deleteUserId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(error => {
+            alert('删除失败：' + error);
+        });
+    }
+    bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+});
+</script>
+{% endblock %}

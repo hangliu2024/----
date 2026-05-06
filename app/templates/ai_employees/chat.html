@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.nickname }} - AI对话{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4" style="height: calc(100vh - 60px);">
+    <div class="row h-100">
+        <!-- 左侧会话列表 -->
+        <div class="col-md-3 border-end">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">{{ employee.nickname }}</h5>
+                <button class="btn btn-sm btn-outline-primary" onclick="newConversation()">
+                    <i class="fas fa-plus"></i> 新对话
+                </button>
+            </div>
+            <div class="list-group" id="conversation-list">
+                <!-- 动态加载 -->
+            </div>
+        </div>
+        
+        <!-- 右侧对话区域 -->
+        <div class="col-md-9 d-flex flex-column h-100">
+            <!-- 对话头部 -->
+            <div class="border-bottom p-3">
+                <div class="d-flex align-items-center">
+                    <div class="employee-avatar-sm me-3">
+                        {{ employee.nickname.charAt(0) }}
+                    </div>
+                    <div>
+                        <h5 class="mb-0">{{ employee.nickname }}</h5>
+                        <small class="text-muted">{{ employee.position or 'AI助手' }}</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 消息区域 -->
+            <div class="flex-grow-1 overflow-auto p-3" id="messages-container">
+                <div id="messages">
+                    {% if employee.greeting %}
+                    <div class="message assistant-message">
+                        <div class="message-avatar">{{ employee.nickname.charAt(0) }}</div>
+                        <div class="message-content">
+                            <div class="message-sender">{{ employee.nickname }}</div>
+                            <div class="message-text">{{ employee.greeting }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- 处理步骤显示 -->
+            <div id="steps-container" class="px-3" style="display: none;">
+                <div class="card bg-light">
+                    <div class="card-body py-2">
+                        <div id="steps-content"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 输入区域 -->
+            <div class="border-top p-3">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="question-input" 
+                           placeholder="输入您的问题..." 
+                           onkeypress="if(event.key==='Enter')sendMessage()">
+                    <button class="btn btn-primary" onclick="sendMessage()" id="send-btn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.employee-avatar-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+.message {
+    display: flex;
+    margin-bottom: 1rem;
+}
+.message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+.user-message .message-avatar {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+.message-content {
+    margin-left: 0.75rem;
+    max-width: 80%;
+}
+.message-sender {
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+.message-text {
+    background: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    white-space: pre-wrap;
+}
+.user-message .message-text {
+    background: #e3f2fd;
+}
+.step-item {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0;
+}
+.step-item.processing .step-icon {
+    animation: spin 1s linear infinite;
+}
+.step-icon {
+    margin-right: 0.5rem;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+.sql-display {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 0.75rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin: 0.5rem 0;
+    overflow-x: auto;
+}
+</style>
+
+<script>
+const employeeId = {{ employee.id }};
+let currentSessionId = null;
+let isStreaming = false;
+
+// 加载会话列表
+async function loadConversations() {
+    try {
+        const response = await fetch(`/api/ai-employees/${employeeId}/conversations`);
+        const conversations = await response.json();
+        renderConversations(conversations);
+    } catch (error) {
+        console.error('加载会话失败:', error);
+    }
+}
+
+// 渲染会话列表
+function renderConversations(conversations) {
+    const container = document.getElementById('conversation-list');
+    
+    if (conversations.length === 0) {
+        container.innerHTML = '<div class="text-muted text-center py-3">暂无历史对话</div>';
+        return;
+    }
+    
+    container.innerHTML = conversations.map(c => `
+        <a href="#" class="list-group-item list-group-item-action ${c.session_id === currentSessionId ? 'active' : ''}"
+           onclick="loadConversation('${c.session_id}')">
+            <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1 text-truncate" style="max-width: 150px;">${c.title}</h6>
+                <small>${new Date(c.updated_at).toLocaleDateString()}</small>
+            </div>
+        </a>
+    `).join('');
+}
+
+// 加载会话消息
+async function loadConversation(sessionId) {
+    currentSessionId = sessionId;
+    loadConversations();
+    
+    try {
+        const response = await fetch(`/api/conversations/${sessionId}/messages`);
+        const messages = await response.json();
+        renderMessages(messages);
+    } catch (error) {
+        console.error('加载消息失败:', error);
+    }
+}
+
+// 渲染消息
+function renderMessages(messages) {
+    const container = document.getElementById('messages');
+    container.innerHTML = '';
+    
+    messages.forEach(msg => {
+        addMessage(msg.role, msg.content);
+    });
+    
+    scrollToBottom();
+}
+
+// 添加消息到界面
+function addMessage(role, content) {
+    const container = document.getElementById('messages');
+    const isUser = role === 'user';
+    
+    const messageHtml = `
+        <div class="message ${isUser ? 'user-message' : 'assistant-message'}">
+            <div class="message-avatar">${isUser ? '我' : '{{ employee.nickname.charAt(0) }}'}</div>
+            <div class="message-content">
+                <div class="message-sender">${isUser ? '我' : '{{ employee.nickname }}'}</div>
+                <div class="message-text">${escapeHtml(content)}</div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', messageHtml);
+    scrollToBottom();
+}
+
+// 发送消息
+async function sendMessage() {
+    if (isStreaming) return;
+    
+    const input = document.getElementById('question-input');
+    const question = input.value.trim();
+    if (!question) return;
+    
+    input.value = '';
+    addMessage('user', question);
+    
+    isStreaming = true;
+    document.getElementById('send-btn').disabled = true;
+    
+    // 显示步骤容器
+    const stepsContainer = document.getElementById('steps-container');
+    const stepsContent = document.getElementById('steps-content');
+    stepsContainer.style.display = 'block';
+    stepsContent.innerHTML = '';
+    
+    let currentAnswer = '';
+    
+    try {
+        const response = await fetch(`/api/ai-employees/${employeeId}/chat/stream`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                question: question,
+                session_id: currentSessionId
+            })
+        });
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const text = decoder.decode(value);
+            const lines = text.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const data = JSON.parse(line.slice(6));
+                        
+                        if (data.step) {
+                            renderStep(data.step);
+                            if (data.sql) {
+                                renderSql(data.sql);
+                            }
+                            if (data.data) {
+                                renderData(data.data);
+                            }
+                        }
+                        
+                        if (data.content) {
+                            currentAnswer += data.content;
+                            updateCurrentAnswer(currentAnswer);
+                        }
+                        
+                        if (data.done) {
+                            finalizeAnswer(currentAnswer);
+                        }
+                        
+                        if (data.error) {
+                            addMessage('assistant', '错误: ' + data.error);
+                        }
+                    } catch (e) {
+                        console.error('Parse error:', e);
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.error('发送失败:', error);
+        addMessage('assistant', '抱歉，发生了错误: ' + error.message);
+    } finally {
+        isStreaming = false;
+        document.getElementById('send-btn').disabled = false;
+        stepsContainer.style.display = 'none';
+    }
+}
+
+// 渲染步骤
+function renderStep(step) {
+    const stepsContent = document.getElementById('steps-content');
+    const iconClass = {
+        'processing': 'fas fa-spinner fa-spin text-primary',
+        'completed': 'fas fa-check-circle text-success',
+        'error': 'fas fa-times-circle text-danger'
+    }[step.status] || 'fas fa-circle text-muted';
+    
+    const stepHtml = `
+        <div class="step-item ${step.status}">
+            <i class="${iconClass} step-icon"></i>
+            <span>步骤${step.step}: ${step.action}</span>
+            ${step.result ? `<span class="text-muted ms-2">- ${step.result}</span>` : ''}
+        </div>
+    `;
+    
+    stepsContent.insertAdjacentHTML('beforeend', stepHtml);
+}
+
+// 渲染SQL
+function renderSql(sql) {
+    const stepsContent = document.getElementById('steps-content');
+    stepsContent.insertAdjacentHTML('beforeend', `
+        <div class="sql-display">${escapeHtml(sql)}</div>
+    `);
+}
+
+// 渲染数据预览
+function renderData(data) {
+    if (!data || data.length === 0) return;
+    const stepsContent = document.getElementById('steps-content');
+    const preview = data.slice(0, 3);
+    stepsContent.insertAdjacentHTML('beforeend', `
+        <div class="small text-muted">数据预览: ${JSON.stringify(preview[0] || {}).substring(0, 100)}...</div>
+    `);
+}
+
+// 更新当前回答
+function updateCurrentAnswer(answer) {
+    let answerDiv = document.getElementById('current-answer');
+    if (!answerDiv) {
+        const container = document.getElementById('messages');
+        container.insertAdjacentHTML('beforeend', `
+            <div class="message assistant-message">
+                <div class="message-avatar">{{ employee.nickname.charAt(0) }}</div>
+                <div class="message-content">
+                    <div class="message-sender">{{ employee.nickname }}</div>
+                    <div class="message-text" id="current-answer"></div>
+                </div>
+            </div>
+        `);
+        answerDiv = document.getElementById('current-answer');
+    }
+    answerDiv.textContent = answer;
+    scrollToBottom();
+}
+
+// 完成回答
+function finalizeAnswer(answer) {
+    const answerDiv = document.getElementById('current-answer');
+    if (answerDiv) {
+        answerDiv.removeAttribute('id');
+    }
+}
+
+// 新建会话
+function newConversation() {
+    currentSessionId = null;
+    document.getElementById('messages').innerHTML = '';
+    document.getElementById('conversation-list').querySelectorAll('.active').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    // 显示问候语
+    {% if employee.greeting %}
+    addMessage('assistant', `{{ employee.greeting }}`);
+    {% endif %}
+}
+
+// 辅助函数
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function scrollToBottom() {
+    const container = document.getElementById('messages-container');
+    container.scrollTop = container.scrollHeight;
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    loadConversations();
+    document.getElementById('question-input').focus();
+});
+</script>
+{% endblock %}

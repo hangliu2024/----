@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}AI配置{% endblock %}
+
+{% block content %}
+<style>
+    .settings-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 2.5rem;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+        text-align: center;
+        animation: fadeInDown 0.6s ease-out;
+    }
+    
+    .settings-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .settings-header h1 {
+        color: white;
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin: 0;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .settings-header p {
+        color: rgba(255, 255, 255, 0.9);
+        margin: 0.5rem 0 0 0;
+        font-size: 1.1rem;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .settings-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+        animation-delay: 0.2s;
+        animation-fill-mode: both;
+        margin-bottom: 2rem;
+    }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .settings-card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .settings-card-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+    
+    .settings-card-header h4 {
+        margin: 0;
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .settings-card-body {
+        padding: 2rem;
+    }
+    
+    .provider-selector {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .provider-option {
+        flex: 1;
+        min-width: 150px;
+        padding: 1.5rem;
+        border: 3px solid #e0e0e0;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+        background: white;
+    }
+    
+    .provider-option:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+    }
+    
+    .provider-option.active {
+        border-color: #667eea;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    }
+    
+    .provider-option i {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+        display: block;
+    }
+    
+    .provider-option h5 {
+        margin: 0;
+        font-weight: 600;
+        color: #333;
+    }
+    
+    .provider-option small {
+        color: #666;
+        font-size: 0.85rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+    
+    .form-control {
+        border-radius: 12px;
+        border: 2px solid #e0e0e0;
+        padding: 12px 16px;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+    
+    .btn-save {
+        border-radius: 12px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 14px 40px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        transition: all 0.3s;
+        width: 100%;
+        margin-top: 1rem;
+    }
+    
+    .btn-save:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+    
+    .provider-config {
+        display: none;
+        padding: 2rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 16px;
+        margin-top: 1rem;
+    }
+    
+    .provider-config.active {
+        display: block;
+    }
+    
+    .info-box {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border-left: 4px solid #667eea;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .info-box h5 {
+        margin: 0 0 0.5rem 0;
+        color: #667eea;
+        font-weight: 600;
+    }
+    
+    .info-box ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+    
+    .info-box li {
+        margin-bottom: 0.25rem;
+        color: #666;
+    }
+    
+    @media (max-width: 768px) {
+        .settings-header {
+            padding: 1.5rem;
+        }
+        
+        .settings-header h1 {
+            font-size: 1.8rem;
+        }
+        
+        .settings-card-body {
+            padding: 1rem;
+        }
+        
+        .provider-option {
+            min-width: 100%;
+        }
+    }
+</style>
+
+<div class="settings-header">
+    <h1><i class="bi bi-robot"></i> AI大模型配置</h1>
+    <p>配置您的大模型API密钥，启用智能数据问答功能</p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
+<div class="settings-card">
+    <div class="settings-card-header">
+        <h4><i class="bi bi-gear"></i> 选择AI服务提供商</h4>
+    </div>
+    <div class="settings-card-body">
+        <form method="POST" action="{{ url_for('ai_settings.save_settings') }}">
+            <div class="provider-selector">
+                <div class="provider-option {{ 'active' if config.provider == 'ollama' else '' }}" onclick="selectProvider('ollama')">
+                    <i class="bi bi-display" style="color: #667eea;"></i>
+                    <h5>本地Ollama</h5>
+                    <small>本地部署</small>
+                </div>
+                <div class="provider-option {{ 'active' if config.provider == 'openai' else '' }}" onclick="selectProvider('openai')">
+                    <i class="bi bi-chat-dots" style="color: #10a37f;"></i>
+                    <h5>OpenAI</h5>
+                    <small>GPT-4/GPT-3.5</small>
+                </div>
+                <div class="provider-option {{ 'active' if config.provider == 'minimax' else '' }}" onclick="selectProvider('minimax')">
+                    <i class="bi bi-lightning-charge" style="color: #ffd700;"></i>
+                    <h5>MiniMax</h5>
+                    <small>MiniMax-M2.7</small>
+                </div>
+            </div>
+            
+            <input type="hidden" name="provider" id="selectedProvider" value="{{ config.provider }}">
+            
+            <!-- Ollama 本地配置 -->
+            <div id="ollama-config" class="provider-config {{ 'active' if config.provider == 'ollama' else '' }}">
+                <h5 style="margin-bottom: 1.5rem; color: #667eea;">
+                    <i class="bi bi-display"></i> 本地Ollama API 配置
+                </h5>
+                <div class="info-box">
+                    <h5><i class="bi bi-info-circle"></i> 如何部署Ollama？</h5>
+                    <ul>
+                        <li>访问 <a href="https://ollama.com/download" target="_blank">Ollama官网</a> 下载安装</li>
+                        <li>安装后运行 <code>ollama serve</code> 启动服务</li>
+                        <li>下载模型如 <code>ollama pull llama3</code></li>
+                        <li>默认地址: http://localhost:11434</li>
+                    </ul>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Base URL</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="ollama_api_base" 
+                               id="ollama_api_base"
+                               placeholder="http://localhost:11434/v1" value="{{ config.ollama_api_base }}">
+                        <button type="button" class="btn btn-outline-primary" onclick="fetchOllamaModels()">
+                            <i class="bi bi-arrow-clockwise"></i> 获取模型
+                        </button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">模型名称</label>
+                    <select class="form-control" name="ollama_model" id="ollama_model">
+                        <option value="">-- 请先获取模型 --</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- OpenAI配置 -->
+            <div id="openai-config" class="provider-config {{ 'active' if config.provider == 'openai' else '' }}">
+                <h5 style="margin-bottom: 1.5rem; color: #10a37f;">
+                    <i class="bi bi-chat-dots"></i> OpenAI API 配置
+                </h5>
+                <div class="info-box">
+                    <h5><i class="bi bi-info-circle"></i> 如何获取API Key？</h5>
+                    <ul>
+                        <li>访问 <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI平台</a></li>
+                        <li>登录后创建API Key</li>
+                        <li>将密钥粘贴到下方</li>
+                    </ul>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <input type="password" class="form-control" name="openai_api_key" 
+                           placeholder="sk-..." value="{{ config.openai_api_key }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Base URL (可选)</label>
+                    <input type="text" class="form-control" name="openai_api_base" 
+                           placeholder="https://api.openai.com/v1 (留空使用默认)" value="{{ config.openai_api_base }}">
+                    <small class="text-muted">如使用代理或自定义端点，请填写完整URL</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">模型名称</label>
+                    <input type="text" class="form-control" name="openai_model" 
+                           placeholder="例如: gpt-4o, gpt-4, gpt-3.5-turbo" value="{{ config.openai_model }}">
+                    <small class="text-muted">常用模型: gpt-4o, gpt-4o-mini, gpt-4-turbo, gpt-4, gpt-3.5-turbo</small>
+                </div>
+            </div>
+            
+            <!-- MiniMax配置 -->
+            <div id="minimax-config" class="provider-config {{ 'active' if config.provider == 'minimax' else '' }}">
+                <h5 style="margin-bottom: 1.5rem; color: #ffd700;">
+                    <i class="bi bi-lightning-charge"></i> MiniMax API 配置
+                </h5>
+                <div class="info-box">
+                    <h5><i class="bi bi-info-circle"></i> 如何获取API Key？</h5>
+                    <ul>
+                        <li>访问 <a href="https://www.minimaxi.com/user-center/basic-information/interface-key" target="_blank">MiniMax开放平台</a></li>
+                        <li>创建API Key并复制</li>
+                        <li>将密钥粘贴到下方</li>
+                    </ul>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <input type="password" class="form-control" name="minimax_api_key" 
+                           placeholder="API Key" value="{{ config.minimax_api_key }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">模型名称</label>
+                    <select class="form-control" name="minimax_model">
+                        <option value="MiniMax-M2.7" {{ 'selected' if config.minimax_model == 'MiniMax-M2.7' else '' }}>MiniMax-M2.7</option>
+                        <option value="MiniMax-M2.7-highspeed" {{ 'selected' if config.minimax_model == 'MiniMax-M2.7-highspeed' else '' }}>MiniMax-M2.7-highspeed</option>
+                        <option value="MiniMax-Text-01" {{ 'selected' if config.minimax_model == 'MiniMax-Text-01' else '' }}>MiniMax-Text-01</option>
+                        <option value="MiniMax-M1" {{ 'selected' if config.minimax_model == 'MiniMax-M1' else '' }}>MiniMax-M1</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-save">
+                <i class="bi bi-check-circle"></i> 保存配置
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function selectProvider(provider) {
+        document.getElementById('selectedProvider').value = provider;
+        
+        document.querySelectorAll('.provider-option').forEach(el => {
+            el.classList.remove('active');
+        });
+        event.currentTarget.classList.add('active');
+        
+        document.querySelectorAll('.provider-config').forEach(el => {
+            el.classList.remove('active');
+        });
+        document.getElementById(provider + '-config').classList.add('active');
+    }
+    
+    async function fetchOllamaModels() {
+        const apiBase = document.getElementById('ollama_api_base').value.trim();
+        if (!apiBase) {
+            alert('请先输入 API Base URL');
+            return;
+        }
+        
+        const baseUrl = apiBase.replace('/v1', '');
+        
+        try {
+            const response = await fetch(baseUrl + '/api/tags');
+            const data = await response.json();
+            
+            const select = document.getElementById('ollama_model');
+            select.innerHTML = '';
+            
+            if (data.models && data.models.length > 0) {
+                data.models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model.name;
+                    option.textContent = model.name;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">未找到模型，请先下载模型</option>';
+            }
+        } catch (error) {
+            alert('获取模型失败: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

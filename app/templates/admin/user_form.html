@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}{{ '新增用户' if not user else '编辑用户' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                    <h4 class="mb-0">
+                        <i class="bi bi-{{ 'person-plus' if not user else 'person-gear' }}"></i>
+                        {{ '新增用户' if not user else '编辑用户' }}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <!-- 基本信息 -->
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">用户名 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ user.username if user else '' }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">邮箱 <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ user.email if user else '' }}" required>
+                            </div>
+                        </div>
+                        
+                        {% if not user %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">密码 <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="confirm_password" class="form-label">确认密码 <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password" required>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="real_name" class="form-label">真实姓名</label>
+                                <input type="text" class="form-control" id="real_name" name="real_name" 
+                                       value="{{ user.real_name if user else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="emp_id" class="form-label">工号</label>
+                                <input type="text" class="form-control" id="emp_id" name="emp_id" 
+                                       value="{{ user.emp_id if user else '' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="phone" class="form-label">手机号</label>
+                                <input type="text" class="form-control" id="phone" name="phone" 
+                                       value="{{ user.phone if user else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="department_id" class="form-label">所属部门</label>
+                                <select class="form-select" id="department_id" name="department_id">
+                                    <option value="">-- 请选择部门 --</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.id }}" {% if user and user.department_id == dept.id %}selected{% endif %}>
+                                        {{ dept.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="role" class="form-label">角色</label>
+                            <select class="form-select" id="role" name="role">
+                                <option value="user" {% if user and user.role == 'user' %}selected{% endif %}>普通用户</option>
+                                <option value="department_admin" {% if user and user.role == 'department_admin' %}selected{% endif %}>部门管理员</option>
+                                <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>管理员</option>
+                            </select>
+                            <div class="form-text">
+                                <strong>角色说明：</strong><br>
+                                • 管理员：拥有系统所有权限<br>
+                                • 部门管理员：管理本部门数据和用户<br>
+                                • 普通用户：只能查看和操作自己的数据
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin.users') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> 返回
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> {{ '创建用户' if not user else '保存修改' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

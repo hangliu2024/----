@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}登录日志{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+            <h4 class="mb-0"><i class="bi bi-clock-history"></i> 登录日志</h4>
+        </div>
+        <div class="card-body">
+            <!-- 筛选 -->
+            <form method="GET" class="mb-4">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <select class="form-select" name="user_id">
+                            <option value="">全部用户</option>
+                            {% for u in users %}
+                            <option value="{{ u.id }}" {% if user_id == u.id|string %}selected{% endif %}>{{ u.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select class="form-select" name="login_type">
+                            <option value="">全部类型</option>
+                            <option value="login" {% if login_type == 'login' %}selected{% endif %}>登录</option>
+                            <option value="logout" {% if login_type == 'logout' %}selected{% endif %}>登出</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" class="form-control" name="date_from" value="{{ date_from }}" placeholder="开始日期">
+                    </div>
+                    <div class="col-md-2">
+                        <input type="date" class="form-control" name="date_to" value="{{ date_to }}" placeholder="结束日期">
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> 筛选</button>
+                        <a href="{{ url_for('admin.login_logs') }}" class="btn btn-secondary">重置</a>
+                    </div>
+                </div>
+            </form>
+
+            <!-- 日志列表 -->
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>用户</th>
+                            <th>类型</th>
+                            <th>登录时间</th>
+                            <th>登出时间</th>
+                            <th>IP地址</th>
+                            <th>浏览器</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.username or '-' }}</td>
+                            <td>
+                                {% if log.login_type == 'login' %}
+                                <span class="badge bg-success">登录</span>
+                                {% else %}
+                                <span class="badge bg-secondary">登出</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ log.login_time.strftime('%Y-%m-%d %H:%M:%S') if log.login_time else '-' }}</td>
+                            <td>{{ log.logout_time.strftime('%Y-%m-%d %H:%M:%S') if log.logout_time else '-' }}</td>
+                            <td>{{ log.ip_address or '-' }}</td>
+                            <td><small>{{ (log.user_agent or '-')[:50] }}{% if log.user_agent and log.user_agent|length > 50 %}...{% endif %}</small></td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted">暂无日志记录</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {% if pagination.pages > 1 %}
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
+                        <a class="page-link" href="{{ url_for('admin.login_logs', page=pagination.prev_num, user_id=user_id, login_type=login_type, date_from=date_from, date_to=date_to) }}">上一页</a>
+                    </li>
+                    {% for page_num in pagination.iter_pages() %}
+                        {% if page_num %}
+                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
+                            <a class="page-link" href="{{ url_for('admin.login_logs', page=page_num, user_id=user_id, login_type=login_type, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
+                        </li>
+                        {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
+                        <a class="page-link" href="{{ url_for('admin.login_logs', page=pagination.next_num, user_id=user_id, login_type=login_type, date_from=date_from, date_to=date_to) }}">下一页</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+
+            <div class="text-muted mt-3">
+                共 {{ pagination.total }} 条记录
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

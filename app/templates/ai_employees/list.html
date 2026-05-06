@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}AI员工管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-3">
+                <i class="fas fa-robot me-2"></i>AI员工管理
+            </h2>
+            <p class="text-muted">管理AI虚拟员工，每个员工有不同的角色和技能</p>
+        </div>
+    </div>
+    
+    <!-- AI员工卡片列表 -->
+    <div class="row" id="employee-list">
+        <!-- 动态加载 -->
+    </div>
+    
+    <!-- 添加新员工按钮 -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <button class="btn btn-primary" onclick="showCreateModal()">
+                <i class="fas fa-plus me-2"></i>创建AI员工
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 创建/编辑员工模态框 -->
+<div class="modal fade" id="employeeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">创建AI员工</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="employeeForm">
+                    <input type="hidden" id="employeeId">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">用户名 *</label>
+                            <input type="text" class="form-control" id="username" required placeholder="唯一标识，如：data_analyst">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">显示名称 *</label>
+                            <input type="text" class="form-control" id="nickname" required placeholder="如：数据分析师">
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">职位</label>
+                            <input type="text" class="form-control" id="position" placeholder="如：高级分析师">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">头像URL</label>
+                            <input type="text" class="form-control" id="avatar" placeholder="头像图片URL">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">简介</label>
+                        <textarea class="form-control" id="bio" rows="2" placeholder="简短介绍"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">角色设定 (System Prompt)</label>
+                        <textarea class="form-control" id="about" rows="4" placeholder="详细的角色设定，定义AI员工的行为和能力"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">问候语</label>
+                        <textarea class="form-control" id="greeting" rows="2" placeholder="AI员工的欢迎语"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">允许访问的数据表</label>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="employees_info" id="table_employees">
+                                    <label class="form-check-label" for="table_employees">员工信息表</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="computer_info" id="table_computers">
+                                    <label class="form-check-label" for="table_computers">计算机资产表</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="tangible_asset" id="table_tangible">
+                                    <label class="form-check-label" for="table_tangible">有形资产表</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="intangible_asset" id="table_intangible">
+                                    <label class="form-check-label" for="table_intangible">无形资产表</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="department" id="table_department">
+                                    <label class="form-check-label" for="table_department">部门表</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="saveEmployee()">保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.employee-card {
+    transition: transform 0.2s;
+    cursor: pointer;
+    height: 100%;
+}
+.employee-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.employee-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+}
+.builtin-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+</style>
+
+<script>
+let employees = [];
+
+// 加载AI员工列表
+async function loadEmployees() {
+    try {
+        const response = await fetch('/api/ai-employees');
+        employees = await response.json();
+        renderEmployees();
+    } catch (error) {
+        console.error('加载失败:', error);
+    }
+}
+
+// 渲染员工卡片
+function renderEmployees() {
+    const container = document.getElementById('employee-list');
+    
+    if (employees.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <i class="fas fa-robot fa-3x text-muted mb-3"></i>
+                <p class="text-muted">暂无AI员工，点击下方按钮创建</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = employees.map(emp => `
+        <div class="col-md-4 col-lg-3 mb-4">
+            <div class="card employee-card" onclick="startChat(${emp.id})">
+                ${emp.is_builtin ? '<span class="badge bg-info builtin-badge">内置</span>' : ''}
+                <div class="card-body text-center">
+                    <div class="employee-avatar">
+                        ${emp.avatar ? `<img src="${emp.avatar}" class="rounded-circle" style="width:80px;height:80px;">` : emp.nickname.charAt(0)}
+                    </div>
+                    <h5 class="card-title">${emp.nickname}</h5>
+                    <p class="card-text text-muted small">${emp.position || 'AI助手'}</p>
+                    <p class="card-text small">${emp.bio || ''}</p>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="event.stopPropagation(); startChat(${emp.id})">
+                            <i class="fas fa-comment"></i> 对话
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="event.stopPropagation(); editEmployee(${emp.id})">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${!emp.is_builtin ? `
+                        <button class="btn btn-outline-danger" onclick="event.stopPropagation(); deleteEmployee(${emp.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 开始对话
+function startChat(id) {
+    window.location.href = `/ai-employees/chat/${id}`;
+}
+
+// 显示创建模态框
+function showCreateModal() {
+    document.getElementById('modalTitle').textContent = '创建AI员工';
+    document.getElementById('employeeForm').reset();
+    document.getElementById('employeeId').value = '';
+    new bootstrap.Modal(document.getElementById('employeeModal')).show();
+}
+
+// 编辑员工
+async function editEmployee(id) {
+    try {
+        const response = await fetch(`/api/ai-employees/${id}`);
+        const emp = await response.json();
+        
+        document.getElementById('modalTitle').textContent = '编辑AI员工';
+        document.getElementById('employeeId').value = emp.id;
+        document.getElementById('username').value = emp.username;
+        document.getElementById('nickname').value = emp.nickname;
+        document.getElementById('position').value = emp.position || '';
+        document.getElementById('avatar').value = emp.avatar || '';
+        document.getElementById('bio').value = emp.bio || '';
+        document.getElementById('about').value = emp.about || '';
+        document.getElementById('greeting').value = emp.greeting || '';
+        
+        // 设置表权限
+        const tables = emp.allowed_tables || [];
+        document.querySelectorAll('[id^="table_"]').forEach(cb => cb.checked = false);
+        tables.forEach(t => {
+            const cb = document.querySelector(`[value="${t}"]`);
+            if (cb) cb.checked = true;
+        });
+        
+        new bootstrap.Modal(document.getElementById('employeeModal')).show();
+    } catch (error) {
+        console.error('加载员工信息失败:', error);
+    }
+}
+
+// 保存员工
+async function saveEmployee() {
+    const id = document.getElementById('employeeId').value;
+    const allowedTables = [];
+    document.querySelectorAll('[id^="table_"]:checked').forEach(cb => {
+        allowedTables.push(cb.value);
+    });
+    
+    const data = {
+        username: document.getElementById('username').value,
+        nickname: document.getElementById('nickname').value,
+        position: document.getElementById('position').value,
+        avatar: document.getElementById('avatar').value,
+        bio: document.getElementById('bio').value,
+        about: document.getElementById('about').value,
+        greeting: document.getElementById('greeting').value,
+        allowed_tables: allowedTables
+    };
+    
+    try {
+        const url = id ? `/api/ai-employees/${id}` : '/api/ai-employees';
+        const method = id ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+            bootstrap.Modal.getInstance(document.getElementById('employeeModal')).hide();
+            loadEmployees();
+        } else {
+            alert(result.error || '保存失败');
+        }
+    } catch (error) {
+        console.error('保存失败:', error);
+        alert('保存失败');
+    }
+}
+
+// 删除员工
+async function deleteEmployee(id) {
+    if (!confirm('确定要删除这个AI员工吗？')) return;
+    
+    try {
+        const response = await fetch(`/api/ai-employees/${id}`, {method: 'DELETE'});
+        const result = await response.json();
+        if (result.success) {
+            loadEmployees();
+        } else {
+            alert(result.error || '删除失败');
+        }
+    } catch (error) {
+        console.error('删除失败:', error);
+    }
+}
+
+// 初始化
+document.addEventListener('DOMContentLoaded', loadEmployees);
+</script>
+{% endblock %}

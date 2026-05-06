@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}任务统计{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- 统计卡片 -->
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">总任务数</h5>
+                    <h2 class="display-4">{{ total_tasks }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <h5 class="card-title">待处理</h5>
+                    <h2 class="display-4">{{ pending_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">进行中</h5>
+                    <h2 class="display-4">{{ in_progress_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">已完成</h5>
+                    <h2 class="display-4">{{ completed_count }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <!-- 任务类型分布 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">任务类型分布</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>任务类型</th>
+                                <th>数量</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task_type, count in type_stats %}
+                            <tr>
+                                <td>
+                                    {% if task_type == 'security' %}
+                                    安全稽查
+                                    {% elif task_type == 'asset' %}
+                                    资产稽查
+                                    {% elif task_type == 'compliance' %}
+                                    合规稽查
+                                    {% else %}
+                                    {{ task_type }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ count }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="2" class="text-center">暂无数据</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 逾期任务 -->
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">逾期任务</h5>
+                </div>
+                <div class="card-body">
+                    {% if overdue_tasks %}
+                    <ul class="list-group">
+                        {% for task in overdue_tasks %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ task.task_title }}
+                            <span class="badge badge-danger">逾期</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted text-center">暂无逾期任务</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

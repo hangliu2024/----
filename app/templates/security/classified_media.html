@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}涉密存储介质{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-disc"></i> 涉密存储介质清单</h4>
+                <div class="btn-group">
+                    <a href="{{ url_for('security.download_classified_media_template') }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-download"></i> 下载模板
+                    </a>
+                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> 导入
+                    </button>
+                    <a href="{{ url_for('security.export_classified_media') }}" class="btn btn-info btn-sm">
+                        <i class="bi bi-file-earmark-excel"></i> 导出
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>介质编号</th>
+                            <th>介质类型</th>
+                            <th>容量</th>
+                            <th>部门</th>
+                            <th>责任人</th>
+                            <th>用途</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>{{ item.media_number or '' }}</td>
+                            <td>{{ item.media_type or '' }}</td>
+                            <td>{{ item.capacity or '' }}</td>
+                            <td>{{ item.dept_name or '' }}</td>
+                            <td>{{ item.responsible_name or '' }}</td>
+                            <td>{{ item.purpose or '' }}</td>
+                            <td>{{ item.status or '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导入模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导入涉密介质数据</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">选择Excel文件</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 请先下载模板，按模板格式填写数据后上传。
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" onclick="submitImport()">导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 结果模态框 -->
+<div class="modal fade" id="resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导入结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="resultContent"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function submitImport() {
+    var formData = new FormData(document.getElementById('importForm'));
+    fetch('{{ url_for("security.import_classified_media") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
+        var content = data.success 
+            ? '<div class="alert alert-success"><i class="bi bi-check-circle"></i> ' + data.message + '</div>'
+            : '<div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> ' + data.message + '</div>';
+        document.getElementById('resultContent').innerHTML = content;
+        resultModal.show();
+        if (data.success) setTimeout(function() { location.reload(); }, 1500);
+    })
+    .catch(error => alert('导入失败：' + error));
+    bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}保密管理{% endblock %}
+
+{% block content %}
+<style>
+    .security-card {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+        text-align: center;
+        transition: transform 0.3s;
+        height: 100%;
+    }
+    .security-card:hover {
+        transform: translateY(-5px);
+    }
+    .security-card h4 {
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    .security-card .count {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    .security-icon {
+        font-size: 3rem;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="card mb-4" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; padding: 2rem;">
+        <h2><i class="bi bi-shield-lock"></i> 保密管理</h2>
+        <p class="mb-0">管理涉密资产、涉密人员及相关安全信息</p>
+    </div>
+    
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="security-card">
+                <i class="bi bi-shield security-icon"></i>
+                <h4>权限矩阵</h4>
+                <div class="count">{{ permission_count }}</div>
+                <a href="{{ url_for('security.permission_list') }}" class="btn btn-light mt-2">查看详情</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="security-card">
+                <i class="bi bi-people security-icon"></i>
+                <h4>涉密人员</h4>
+                <div class="count">{{ personnel_count }}</div>
+                <a href="{{ url_for('security.classified_personnel') }}" class="btn btn-light mt-2">查看详情</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="security-card">
+                <i class="bi bi-disc security-icon"></i>
+                <h4>涉密存储介质</h4>
+                <div class="count">{{ media_count }}</div>
+                <a href="{{ url_for('security.classified_media') }}" class="btn btn-light mt-2">查看详情</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="security-card">
+                <i class="bi bi-geo-alt security-icon"></i>
+                <h4>信息安全区域</h4>
+                <div class="count">{{ zone_count }}</div>
+                <a href="{{ url_for('security.security_zone') }}" class="btn btn-light mt-2">查看详情</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="security-card">
+                <i class="bi bi-file-earmark-text security-icon"></i>
+                <h4>电子涉密文件</h4>
+                <div class="count">{{ electronic_count }}</div>
+                <a href="{{ url_for('security.electronic_document') }}" class="btn btn-light mt-2">查看详情</a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="security-card">
+                <i class="bi bi-file-earmark security-icon"></i>
+                <h4>纸质涉密文件</h4>
+                <div class="count">{{ paper_count }}</div>
+                <a href="{{ url_for('security.paper_document') }}" class="btn btn-light mt-2">查看详情</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

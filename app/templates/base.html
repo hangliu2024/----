@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}资产管理系统{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #1a365d;
+            --primary-light: #2c5282;
+            --primary-dark: #1a202c;
+            --accent-color: #3182ce;
+            --success-color: #38a169;
+            --warning-color: #d69e2e;
+            --danger-color: #c53030;
+            --info-color: #3182ce;
+            --gray-50: #f7fafc;
+            --gray-100: #edf2f7;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e0;
+            --gray-600: #718096;
+            --gray-800: #2d3748;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-100);
+            min-height: 100vh;
+            color: var(--gray-800);
+        }
+        
+        header {
+            background: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1000;
+        }
+        
+        .navbar-brand { font-weight: 600; font-size: 1.25rem; letter-spacing: 0.5px; }
+        
+        .nav-link {
+            font-weight: 500;
+            padding: 0.75rem 1rem !important;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .nav-link:hover { background: rgba(255, 255, 255, 0.1); }
+        
+        .dropdown-menu {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            background: white;
+            position: absolute;
+            z-index: 9999 !important;
+            margin-top: 0.25rem;
+        }
+        
+        .dropdown-item {
+            padding: 0.625rem 1rem;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+        
+        .dropdown-item:hover { background: var(--gray-100); color: var(--accent-color); }
+        .dropdown-item i { width: 20px; text-align: center; margin-right: 8px; color: var(--gray-600); }
+        .dropdown-item:hover i { color: var(--accent-color); }
+        
+        main {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert { border: none; border-radius: 6px; padding: 0.875rem 1.25rem; font-weight: 500; }
+        .alert-success { background: #c6f6d5; color: #276749; }
+        .alert-info { background: #bee3f8; color: #2b6cb0; }
+        .alert-warning { background: #fefcbf; color: #975a16; }
+        .alert-danger { background: #fed7d7; color: #c53030; }
+        
+        .card {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            background: white;
+        }
+        
+        .card-header {
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            padding: 1rem 1.25rem;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .card-body { padding: 1.25rem; }
+        
+        .btn {
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary { background: var(--primary-color); }
+        .btn-primary:hover { background: var(--primary-light); }
+        .btn-success { background: var(--success-color); }
+        .btn-success:hover { background: #2f855a; }
+        .btn-info { background: var(--info-color); }
+        .btn-info:hover { background: #2b6cb0; }
+        .btn-warning { background: var(--warning-color); }
+        .btn-warning:hover { background: #b7791f; }
+        .btn-danger { background: var(--danger-color); }
+        .btn-danger:hover { background: #9b2c2c; }
+        
+        .btn-outline-primary { border: 1px solid var(--primary-color); color: var(--primary-color); background: transparent; }
+        .btn-outline-primary:hover { background: var(--primary-color); color: white; }
+        .btn-outline-secondary { border: 1px solid var(--gray-300); color: var(--gray-600); background: transparent; }
+        .btn-outline-secondary:hover { background: var(--gray-100); color: var(--gray-800); }
+        
+        .table { border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; }
+        .table thead { background: var(--gray-50); }
+        .table thead th {
+            border-bottom: 2px solid var(--gray-200);
+            padding: 0.875rem 1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 0.875rem;
+        }
+        .table tbody tr { transition: background-color 0.2s ease; }
+        .table tbody tr:hover { background: var(--gray-50); }
+        .table tbody td { padding: 0.875rem 1rem; vertical-align: middle; border-color: var(--gray-200); }
+        
+        .form-control {
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            transition: all 0.2s ease;
+        }
+        .form-control:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1); }
+        
+        .form-label { font-weight: 500; color: var(--gray-800); margin-bottom: 0.375rem; font-size: 0.875rem; }
+        
+        .form-select { border: 1px solid var(--gray-300); border-radius: 6px; padding: 0.5rem 0.75rem; }
+        .form-select:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1); }
+        
+        .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+        
+        footer { text-align: center; padding: 1.5rem; color: var(--gray-600); margin-top: auto; font-size: 0.875rem; }
+        
+        .badge { font-weight: 500; padding: 0.35rem 0.65rem; border-radius: 4px; }
+        .badge.bg-success { background: var(--success-color) !important; }
+        .badge.bg-primary { background: var(--primary-color) !important; }
+        .badge.bg-danger { background: var(--danger-color) !important; }
+        .badge.bg-warning { background: var(--warning-color) !important; }
+        .badge.bg-info { background: var(--info-color) !important; }
+        .badge.bg-secondary { background: var(--gray-600) !important; }
+        
+        .page-link { color: var(--primary-color); border: 1px solid var(--gray-200); }
+        .page-link:hover { background: var(--gray-100); color: var(--primary-light); }
+        .page-item.active .page-link { background: var(--primary-color); border-color: var(--primary-color); }
+        
+        @media (max-width: 768px) {
+            main { border-radius: 0; margin: 0; padding: 1rem; }
+            .card { margin-bottom: 1rem; }
+        }
+        
+        .container { max-width: 1400px !important; }
+        
+        .card-header.bg-primary { background: var(--primary-color) !important; }
+        .card-header.bg-success { background: var(--success-color) !important; }
+        .card-header.bg-info { background: var(--info-color) !important; }
+        .card-header.bg-warning { background: var(--warning-color) !important; }
+        .card-header.bg-danger { background: var(--danger-color) !important; }
+        
+        .stats-card { border-left: 4px solid var(--primary-color); }
+        .stats-card.stats-success { border-left-color: var(--success-color); }
+        .stats-card.stats-warning { border-left-color: var(--warning-color); }
+        .stats-card.stats-danger { border-left-color: var(--danger-color); }
+        .stats-card.stats-info { border-left-color: var(--info-color); }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav class="navbar navbar-expand-lg navbar-dark">
+                <a class="navbar-brand" href="{{ url_for('assets.dashboard') }}">
+                    <i class="bi bi-box-seam"></i> 信息资产管理系统
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    {% if current_user.is_authenticated %}
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('assets.dashboard') }}"><i class="bi bi-speedometer2"></i> 仪表盘</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="assetDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-laptop"></i> 涉密资产</a>
+                            <ul class="dropdown-menu" aria-labelledby="assetDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('assets.office_computers') }}"><i class="bi bi-laptop"></i> 办公电脑</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('assets.industrial_computers') }}"><i class="bi bi-cpu"></i> 工控机</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('personnel.personnel_list') }}"><i class="bi bi-people"></i> 人员管理</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('security.index') }}"><i class="bi bi-shield-lock"></i> 保密管理</a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="auditDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-clipboard-check"></i> 稽查管理</a>
+                            <ul class="dropdown-menu" aria-labelledby="auditDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('audit.task_list') }}"><i class="bi bi-list-task"></i> 任务列表</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('audit.my_tasks') }}"><i class="bi bi-person-check"></i> 我的任务</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('audit.record_list') }}"><i class="bi bi-journal-text"></i> 稽查记录</a></li>
+                                {% if current_user.role == 'admin' %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('audit.statistics') }}"><i class="bi bi-bar-chart"></i> 任务统计</a></li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                        {% if current_user.role == 'admin' %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-gear"></i> 系统管理</a>
+                            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> 用户管理</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('departments.manage_departments') }}"><i class="bi bi-building"></i> 部门管理</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.login_logs') }}"><i class="bi bi-clock-history"></i> 登录日志</a></li>
+                                <li><a class="dropdown-item" href="{{ url_for('admin.operation_logs') }}"><i class="bi bi-journal-text"></i> 操作日志</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="aiDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-robot"></i> AI助手</a>
+                            <ul class="dropdown-menu" aria-labelledby="aiDropdown">
+                                <li><a class="dropdown-item" href="{{ url_for('ai_assistant.ai_assistant') }}"><i class="bi bi-chat-dots"></i> 数据问答</a></li>
+                                {% if current_user.role == 'admin' %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{{ url_for('ai_settings.ai_settings') }}"><i class="bi bi-gear"></i> AI配置</a></li>
+                                {% endif %}
+                            </ul>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <span class="nav-link"><i class="bi bi-person-circle"></i> 欢迎您, {{ current_user.username }}</span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
+                        </li>
+                    </ul>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+    
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <footer>
+        <p class="mb-0">&copy; 2024 信息资产管理系统. 保留所有权利.</p>
+    </footer>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

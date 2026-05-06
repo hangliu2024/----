@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}用户管理{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card glass-effect">
+        <div class="card-header">
+            <h2 class="text-2xl font-bold text-gray-800 mb-0">用户管理</h2>
+            <p class="text-gray-600">管理用户账号和部门权限</p>
+        </div>
+        <div class="card-body">
+            <div class="overflow-x-auto">
+                <table class="table table-hover">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th>用户名</th>
+                            <th>邮箱</th>
+                            <th>角色</th>
+                            <th>所属部门</th>
+                            <th>部门访问权限</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.role }}</td>
+                            <td>{{ user.department.name if user.department else '未分配' }}</td>
+                            <td>{{ '是' if user.department_access else '否' }}</td>
+                            <td>
+                                <a href="{{ url_for('departments.manage_user_departments', user_id=user.id) }}" class="btn btn-sm btn-primary">
+                                    <i class="bi bi-pencil"></i> 配置部门
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

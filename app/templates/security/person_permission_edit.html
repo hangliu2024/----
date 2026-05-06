@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}编辑员工权限 - {{ emp_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+    }
+    
+    .emp-info-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .perm-table {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    
+    .perm-table th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        text-align: center;
+    }
+    
+    .perm-table td {
+        padding: 0.75rem;
+        text-align: center;
+        border-bottom: 1px solid #eee;
+        vertical-align: middle;
+    }
+    
+    .perm-table tr:hover {
+        background: #f8f9ff;
+    }
+    
+    .perm-table .system-name {
+        text-align: left;
+        font-weight: 500;
+    }
+    
+    .form-check-input {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+    }
+    
+    .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .btn-save {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        border-radius: 8px;
+    }
+    
+    .btn-save:hover {
+        opacity: 0.9;
+        color: white;
+    }
+    
+    .legend {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .legend-item {
+        font-size: 0.9rem;
+    }
+</style>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-pencil-square"></i> 编辑员工权限</h2>
+            <p class="mb-0">为 {{ emp_name }} 配置各业务系统权限</p>
+        </div>
+        <div>
+            <a href="/security/permissions" class="btn btn-light">
+                <i class="bi bi-arrow-left"></i> 返回列表
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="emp-info-card">
+    <div class="row">
+        <div class="col-md-3">
+            <strong>工号：</strong> {{ emp_id }}
+        </div>
+        <div class="col-md-3">
+            <strong>姓名：</strong> {{ emp_name }}
+        </div>
+        <div class="col-md-3">
+            <strong>部门：</strong> {{ dept_name or '未分配' }}
+        </div>
+        <div class="col-md-3">
+            <strong>部门ID：</strong> {{ dept_id or '-' }}
+        </div>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item"><strong>权限说明：</strong></div>
+    <div class="legend-item"><strong>V</strong> = 查看</div>
+    <div class="legend-item"><strong>+</strong> = 新增</div>
+    <div class="legend-item"><strong>E</strong> = 编辑</div>
+    <div class="legend-item"><strong>D</strong> = 删除</div>
+    <div class="legend-item"><strong>X</strong> = 导出</div>
+    <div class="legend-item"><strong>I</strong> = 导入</div>
+    <div class="legend-item"><strong>A</strong> = 审批</div>
+    <div class="legend-item"><strong>C</strong> = 配置</div>
+</div>
+
+<form id="permForm" method="POST" action="/security/person_permission/save">
+    <input type="hidden" name="emp_id" value="{{ emp_id }}">
+    <input type="hidden" name="emp_name" value="{{ emp_name }}">
+    <input type="hidden" name="dept_id" value="{{ dept_id }}">
+    <input type="hidden" name="dept_name" value="{{ dept_name }}">
+    
+    <div class="perm-table">
+        <table class="table table-bordered mb-0">
+            <thead>
+                <tr>
+                    <th style="width: 200px;">业务系统</th>
+                    <th><input type="checkbox" id="checkAll"> 全选</th>
+                    <th><br>V<br><small>查看</small></th>
+                    <th><br>+<br><small>新增</small></th>
+                    <th><br>E<br><small>编辑</small></th>
+                    <th><br>D<br><small>删除</small></th>
+                    <th><br>X<br><small>导出</small></th>
+                    <th><br>I<br><small>导入</small></th>
+                    <th><br>A<br><small>审批</small></th>
+                    <th><br>C<br><small>配置</small></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for system in all_systems %}
+                {% set sys_perm = perm_dict.get(system) %}
+                <tr>
+                    <td class="system-name">{{ system }}</td>
+                    <td>
+                        <input type="checkbox" class="row-check" data-system="{{ system }}"
+                               {% if sys_perm and sys_perm.can_view and sys_perm.can_add and sys_perm.can_edit and sys_perm.can_delete and sys_perm.can_export and sys_perm.can_import and sys_perm.can_approve and sys_perm.can_config %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_view_{{ system }}" value="1" 
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_view %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_add_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_add %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_edit_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_edit %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_delete_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_delete %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_export_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_export %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_import_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_import %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_approve_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_approve %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="can_config_{{ system }}" value="1"
+                               class="form-check-input perm-check"
+                               {% if sys_perm and sys_perm.can_config %}checked{% endif %}>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="text-center mt-4">
+        <button type="submit" class="btn btn-save">
+            <i class="bi bi-check-lg"></i> 保存权限配置
+        </button>
+    </div>
+</form>
+
+<script>
+// 全选功能
+document.getElementById('checkAll').addEventListener('change', function() {
+    var checked = this.checked;
+    document.querySelectorAll('.perm-check').forEach(function(cb) {
+        cb.checked = checked;
+    });
+    document.querySelectorAll('.row-check').forEach(function(cb) {
+        cb.checked = checked;
+    });
+});
+
+// 行选择功能
+document.querySelectorAll('.row-check').forEach(function(checkbox) {
+    checkbox.addEventListener('change', function() {
+        var system = this.dataset.system;
+        var checked = this.checked;
+        ['can_view', 'can_add', 'can_edit', 'can_delete', 'can_export', 'can_import', 'can_approve', 'can_config'].forEach(function(prefix) {
+            var cb = document.querySelector('input[name="' + prefix + '_' + system + '"]');
+            if (cb) cb.checked = checked;
+        });
+    });
+});
+
+// 提交表单
+document.getElementById('permForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    var formData = new FormData(this);
+    
+    fetch('/security/person_permission/save', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('保存成功！');
+            window.location.href = '/security/permissions';
+        } else {
+            alert('保存失败：' + data.message);
+        }
+    })
+    .catch(() => {
+        alert('请求失败');
+    });
+});
+</script>
+{% endblock %}

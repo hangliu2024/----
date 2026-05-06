@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}创建稽查记录{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <i class="fas fa-plus"></i> 创建稽查记录
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('audit.create_record') }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="audit_type">稽查类型 <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="audit_type" name="audit_type" required>
+                                        <option value="security">安全稽查</option>
+                                        <option value="asset">资产稽查</option>
+                                        <option value="compliance">合规稽查</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="audit_scope">稽查范围</label>
+                                    <input type="text" class="form-control" id="audit_scope" name="audit_scope">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="task_id">关联任务</label>
+                                    <select class="form-control" id="task_id" name="task_id">
+                                        <option value="">无关联任务</option>
+                                        {% for task in tasks %}
+                                        <option value="{{ task.id }}">{{ task.task_no }} - {{ task.task_title }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="audit_date">稽查日期</label>
+                                    <input type="date" class="form-control" id="audit_date" name="audit_date" value="{{ today }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="audit_content">稽查内容 <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="audit_content" name="audit_content" rows="4" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="audit_result">稽查结果</label>
+                            <textarea class="form-control" id="audit_result" name="audit_result" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="issue_found">发现问题</label>
+                            <textarea class="form-control" id="issue_found" name="issue_found" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="suggestion">改进建议</label>
+                            <textarea class="form-control" id="suggestion" name="suggestion" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> 创建记录
+                            </button>
+                            <a href="{{ url_for('audit.record_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> 取消
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

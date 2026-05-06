@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}人员权限矩阵{% endblock %}
+
+{% block content %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 16px;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+    }
+    
+    .table-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        overflow: auto;
+        max-height: 600px;
+    }
+    
+    .permission-matrix {
+        border-collapse: collapse;
+        width: 100%;
+    }
+    
+    .permission-matrix th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem;
+        text-align: center;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        white-space: nowrap;
+    }
+    
+    .permission-matrix th.emp-header {
+        position: sticky;
+        left: 0;
+        z-index: 20;
+    }
+    
+    .permission-matrix td {
+        padding: 0.4rem;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        font-size: 0.8rem;
+    }
+    
+    .permission-matrix td.emp-cell {
+        position: sticky;
+        left: 0;
+        background: #f8f9fa;
+        z-index: 5;
+        text-align: left;
+        white-space: nowrap;
+        font-size: 0.75rem;
+    }
+    
+    .permission-matrix td.emp-cell .emp-name {
+        font-weight: 600;
+        color: #333;
+        display: block;
+    }
+    
+    .permission-matrix td.emp-cell .emp-info {
+        color: #666;
+        font-size: 0.7rem;
+        display: block;
+    }
+    
+    .permission-matrix tr:hover td.emp-cell {
+        background: #e8e8f8;
+    }
+    
+    .permission-matrix tr:hover td:not(.emp-cell) {
+        background: #f0f0ff;
+    }
+    
+    .perm-badge {
+        display: inline-flex;
+        gap: 1px;
+    }
+    
+    .perm-icon {
+        width: 20px;
+        height: 20px;
+        border-radius: 3px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        color: white;
+        cursor: pointer;
+    }
+    
+    .perm-icon.view { background: #17a2b8; }
+    .perm-icon.add { background: #28a745; }
+    .perm-icon.edit { background: #ffc107; color: #333; }
+    .perm-icon.delete { background: #dc3545; }
+    .perm-icon.export { background: #6f42c1; }
+    .perm-icon.import { background: #fd7e14; }
+    .perm-icon.approve { background: #20c997; }
+    .perm-icon.config { background: #343a40; }
+    
+    .legend {
+        display: flex;
+        gap: 0.8rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+        font-size: 0.8rem;
+    }
+    
+    .stats-row {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card h3 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #667eea;
+    }
+    
+    .stat-card p {
+        margin: 0;
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .system-col {
+        min-width: 100px;
+    }
+    
+    .emp-col {
+        min-width: 160px;
+    }
+    
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 2px;
+        font-size: 12px;
+    }
+    
+    .action-btn.edit { background: #ffc107; color: #333; }
+    .action-btn.delete { background: #dc3545; color: white; }
+    .action-btn.save { background: #28a745; color: white; }
+    
+    .modal-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .modal-header .btn-close { filter: invert(1); }
+    .form-control:focus { border-color: #667eea; box-shadow: 0 0 0 0.2rem rgba(102,126,234,.25); }
+</style>
+
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div>
+            <h2><i class="bi bi-people-fill"></i> 人员权限矩阵</h2>
+            <p class="mb-0">人员对各类业务系统的访问权限配置（工号、姓名、部门信息）</p>
+        </div>
+        <div>
+            <form method="GET" action="/security/permissions" class="d-flex gap-2">
+                <input type="text" name="search" class="form-control" placeholder="搜索人名、工号、部门..." value="{{ search or '' }}" style="width: 200px;">
+                <button type="submit" class="btn btn-light">
+                    <i class="bi bi-search"></i> 搜索
+                </button>
+                {% if search %}
+                <a href="/security/permissions" class="btn btn-outline-light">
+                    <i class="bi bi-x-circle"></i> 清除
+                </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <h3>{{ employees|length }}</h3>
+        <p>人员数量</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ systems|length }}</h3>
+        <p>系统数量</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ permission_count }}</h3>
+        <p>权限配置项</p>
+    </div>
+</div>
+
+<div class="legend">
+    <div class="legend-item">
+        <span class="perm-icon view">V</span>
+        <span>查看</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon add">+</span>
+        <span>新增</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon edit">E</span>
+        <span>编辑</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon delete">D</span>
+        <span>删除</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon export">X</span>
+        <span>导出</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon import">I</span>
+        <span>导入</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon approve">A</span>
+        <span>审批</span>
+    </div>
+    <div class="legend-item">
+        <span class="perm-icon config">C</span>
+        <span>配置</span>
+    </div>
+</div>
+
+<div class="table-container">
+    <table class="permission-matrix">
+        <thead>
+            <tr>
+                <th style="width: 120px;">工号</th>
+                <th style="width: 150px;">姓名</th>
+                <th style="width: 200px;">部门</th>
+                <th style="width: 80px;">操作</th>
+                {% for system in systems %}
+                <th class="system-col" style="font-size: 12px; min-width: 80px;">{{ system }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for emp in employees %}
+            <tr>
+                <td>{{ emp[0] }}</td>
+                <td><strong>{{ emp[1] }}</strong></td>
+                <td>{{ emp[3] or '未分配' }}</td>
+                <td>
+                    <a href="/security/person_permission/edit/{{ emp[0] }}" class="btn btn-sm btn-warning" style="padding: 2px 6px; font-size: 11px;" title="编辑">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                </td>
+                {% for system in systems %}
+                {% set key = '["' + emp[0] + '", "' + system + '"]' %}
+                {% set perm = permission_dict.get(key) %}
+                <td>
+                    {% if perm %}
+                    <div class="perm-badge">
+                        {% if perm.can_view %}
+                        <span class="perm-icon view" title="查看">V</span>
+                        {% endif %}
+                        {% if perm.can_add %}
+                        <span class="perm-icon add" title="新增">+</span>
+                        {% endif %}
+                        {% if perm.can_edit %}
+                        <span class="perm-icon edit" title="编辑">E</span>
+                        {% endif %}
+                        {% if perm.can_delete %}
+                        <span class="perm-icon delete" title="删除">D</span>
+                        {% endif %}
+                        {% if perm.can_export %}
+                        <span class="perm-icon export" title="导出">X</span>
+                        {% endif %}
+                        {% if perm.can_import %}
+                        <span class="perm-icon import" title="导入">I</span>
+                        {% endif %}
+                        {% if perm.can_approve %}
+                        <span class="perm-icon approve" title="审批">A</span>
+                        {% endif %}
+                        {% if perm.can_config %}
+                        <span class="perm-icon config" title="配置">C</span>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <span style="color: #ccc;">-</span>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if total_pages > 1 %}
+<div class="d-flex justify-content-center mt-3">
+    <nav>
+        <ul class="pagination">
+            {% if page > 1 %}
+            <li class="page-item">
+                <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}">首页</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page-1 }}{% if search %}&search={{ search }}{% endif %}">上一页</a>
+            </li>
+            {% endif %}
+            
+            {% set start_page = page - 2 if page > 2 else 1 %}
+            {% set end_page = page + 2 if page + 2 < total_pages else total_pages %}
+            
+            {% for p in range(start_page, end_page + 1) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+                <a class="page-link" href="?page={{ p }}{% if search %}&search={{ search }}{% endif %}">{{ p }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if page < total_pages %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page+1 }}{% if search %}&search={{ search }}{% endif %}">下一页</a>
+            </li>
+            <li class="page-item">
+                <a class="page-link" href="?page={{ total_pages }}{% if search %}&search={{ search }}{% endif %}">末页</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+<div class="text-center text-muted mb-3">
+    共 {{ total_emp }} 名员工，第 {{ page }}/{{ total_pages }} 页，每页 {{ per_page }} 人
+</div>
+{% endif %}
+
+{% endblock %}

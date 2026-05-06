@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}工控机管理{% endblock %}
+
+{% block content %}
+<style>
+    .compact-table {
+        font-size: 0.85rem;
+    }
+    .compact-table thead th {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        font-weight: 600;
+        padding: 10px 8px;
+        border: none;
+        white-space: nowrap;
+    }
+    .compact-table tbody td {
+        padding: 8px;
+        vertical-align: middle;
+        border-color: #e3e3e3;
+    }
+    .compact-table tbody tr:hover {
+        background-color: #f8f9ff;
+    }
+    .search-box {
+        border-radius: 20px;
+        border: 2px solid #e0e0e0;
+        padding: 8px 16px;
+        transition: all 0.3s;
+    }
+    .search-box:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    .btn-search {
+        border-radius: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 8px 20px;
+    }
+    .card-header-custom {
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+        color: white;
+        border-radius: 12px 12px 0 0;
+        padding: 20px 25px;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header card-header-custom">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h4 class="mb-1"><i class="bi bi-cpu"></i> 工控机管理</h4>
+                    <p class="mb-0 opacity-75">查看和管理公司工控机设备</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <form class="d-flex" method="GET" action="{{ url_for('assets.industrial_computers') }}">
+                    <input class="form-control search-box me-2" type="search" placeholder="搜索设备名称、IP地址、部门..." name="search" value="{{ search or '' }}">
+                    <button class="btn btn-search" type="submit"><i class="bi bi-search"></i> 搜索</button>
+                </form>
+                <div class="btn-group">
+                    <a href="{{ url_for('assets.download_industrial_template') }}" class="btn btn-outline-primary">
+                        <i class="bi bi-download"></i> 下载模板
+                    </a>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> 导入
+                    </button>
+                    <a href="{{ url_for('assets.export_industrial_computers', search=search) }}" class="btn btn-success">
+                        <i class="bi bi-file-earmark-excel"></i> 导出
+                    </a>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-hover compact-table mb-0">
+                    <thead>
+                        <tr>
+                            <th class="text-center" style="width: 50px;">序号</th>
+                            <th>区域</th>
+                            <th>BU部门</th>
+                            <th>工厂</th>
+                            <th>设备名称</th>
+                            <th>位置/工序</th>
+                            <th>操作系统</th>
+                            <th>IP地址</th>
+                            <th>MAC地址</th>
+                            <th>第三方杀毒</th>
+                            <th>IEP安装</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td class="text-center text-muted">{{ item.seq_no or loop.index }}</td>
+                            <td>{{ item.zone or '' }}</td>
+                            <td>{{ item.bu_dept or '' }}</td>
+                            <td>{{ item.factory or '' }}</td>
+                            <td><div class="d-flex align-items-center"><i class="bi bi-cpu text-primary me-2"></i><span class="fw-medium">{{ item.device_name or '' }}</span></div></td>
+                            <td>{{ item.location or '' }}</td>
+                            <td>{{ item.operating_system or '' }}</td>
+                            <td><code class="bg-light px-2 py-1 rounded">{{ item.ip_address[:20] if item.ip_address else '' }}</code></td>
+                            <td><small class="text-muted font-monospace">{{ item.mac_address[:20] if item.mac_address else '' }}</small></td>
+                            <td>
+                                {% if item.third_party_antivirus == '是' %}
+                                <span class="badge bg-success">是</span>
+                                {% elif item.third_party_antivirus == '否' %}
+                                <span class="badge bg-warning text-dark">否</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ item.third_party_antivirus or '' }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.iep_installed == '是' %}
+                                <span class="badge bg-success">是</span>
+                                {% elif item.iep_installed == '否' %}
+                                <span class="badge bg-warning text-dark">否</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ item.iep_installed or '' }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if pagination.pages > 1 %}
+            <nav aria-label="分页导航" class="mt-3">
+                <ul class="pagination justify-content-center flex-wrap">
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
+                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=1, search=search) }}">首页</a>
+                    </li>
+                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
+                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=pagination.prev_num if pagination.has_prev else 1, search=search) }}">上一页</a>
+                    </li>
+                    {% set start = [1, pagination.page - 2]|max %}
+                    {% set end = [pagination.pages, pagination.page + 2]|min %}
+                    {% for p in range(start, end + 1) %}
+                    <li class="page-item {{ 'active' if p == pagination.page else '' }}">
+                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=p, search=search) }}">{{ p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
+                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=pagination.next_num if pagination.has_next else pagination.pages, search=search) }}">下一页</a>
+                    </li>
+                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
+                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=pagination.pages, search=search) }}">末页</a>
+                    </li>
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- 导入模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-upload"></i> 导入工控机数据</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="importFile" class="form-label">选择Excel文件</label>
+                        <input type="file" class="form-control" id="importFile" name="file" accept=".xlsx,.xls" required>
+                        <div class="form-text">支持 .xlsx 或 .xls 格式，请先下载模板填写数据</div>
+                    </div>
+                </form>
+                
+                <div id="importResult" class="d-none">
+                    <hr>
+                    <div id="resultContent"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="importBtn" onclick="doImport()">
+                    <span class="spinner-border spinner-border-sm d-none" id="importSpinner"></span>
+                    <i class="bi bi-upload"></i> 开始导入
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function doImport() {
+    const fileInput = document.getElementById('importFile');
+    const resultDiv = document.getElementById('importResult');
+    const resultContent = document.getElementById('resultContent');
+    const spinner = document.getElementById('importSpinner');
+    const importBtn = document.getElementById('importBtn');
+    
+    if (!fileInput.files.length) {
+        alert('请选择文件');
+        return;
+    }
+    
+    spinner.classList.remove('d-none');
+    importBtn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    fetch('{{ url_for("assets.import_industrial_computers") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        spinner.classList.add('d-none');
+        importBtn.disabled = false;
+        resultDiv.classList.remove('d-none');
+        
+        if (data.success) {
+            resultContent.innerHTML = `
+                <div class="alert alert-success mb-0">
+                    <i class="bi bi-check-circle"></i> ${data.message}
+                </div>
+                <ul class="mt-2 mb-0 small">
+                    <li>成功导入: ${data.success_count} 条</li>
+                    <li>跳过(已存在): ${data.skip_count} 条</li>
+                    ${data.error_count > 0 ? '<li class="text-danger">失败: ' + data.error_count + ' 条</li>' : ''}
+                </ul>
+            `;
+            
+            if (data.errors && data.errors.length > 0) {
+                resultContent.innerHTML += `
+                    <div class="mt-2">
+                        <strong>错误详情:</strong>
+                        <ul class="text-danger small mb-0">
+                            ${data.errors.map(e => '<li>' + e + '</li>').join('')}
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            setTimeout(() => { location.reload(); }, 2000);
+        } else {
+            resultContent.innerHTML = `
+                <div class="alert alert-danger mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        spinner.classList.add('d-none');
+        importBtn.disabled = false;
+        resultDiv.classList.remove('d-none');
+        resultContent.innerHTML = `
+            <div class="alert alert-danger mb-0">
+                <i class="bi bi-exclamation-triangle"></i> 导入失败: ${error}
+            </div>
+        `;
+    });
+}
+
+document.getElementById('importModal').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('importForm').reset();
+    document.getElementById('importResult').classList.add('d-none');
+});
+</script>
+{% endblock %}

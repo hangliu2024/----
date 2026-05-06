@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}配置用户部门权限{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card glass-effect">
+        <div class="card-header">
+            <h2 class="text-2xl font-bold text-gray-800 mb-0">配置用户部门权限</h2>
+            <p class="text-gray-600">为 {{ user.username }} 配置部门管理权限</p>
+        </div>
+        <div class="card-body">
+            <form method="POST" class="bg-white p-6 rounded-lg shadow-sm">
+                <div class="mb-6">
+                    <label for="department_id" class="block text-gray-700 font-medium mb-2">选择部门</label>
+                    <select name="department_id" id="department_id" class="form-select w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">-- 选择部门 --</option>
+                        {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if user.department_id == dept.id %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-6">
+                    <div class="flex items-center">
+                        <input type="checkbox" name="department_access" id="department_access" class="form-check-input" {% if user.department_access %}checked{% endif %}>
+                        <label for="department_access" class="ml-2 text-gray-700">只查看本部门数据</label>
+                    </div>
+                </div>
+                
+                <div class="flex justify-between">
+                    <a href="{{ url_for('departments.manage_users') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> 返回
+                    </a>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> 保存配置
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
