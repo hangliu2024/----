@@ -1,1105 +1,592 @@
 {% extends "base.html" %}
 
-{% block title %}{{ legend }}{% endblock %}
+{% block title %}{{ legend }} - 资产管理系统{% endblock %}
 
 {% block content %}
-<style>
-    .form-page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 20px;
-        padding: 2.5rem;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-        animation: fadeInDown 0.6s ease-out;
-    }
-    
-    .form-page-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        animation: rotate 20s linear infinite;
-    }
-    
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-    }
-    
-    @keyframes fadeInDown {
-        from {
-            opacity: 0;
-            transform: translateY(-30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .form-page-header h1 {
-        color: white;
-        font-weight: 700;
-        font-size: 2.5rem;
-        margin: 0;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .form-page-header p {
-        color: rgba(255, 255, 255, 0.9);
-        margin: 0.5rem 0 0 0;
-        font-size: 1.1rem;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .form-card {
-        background: white;
-        border-radius: 20px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        animation: fadeInUp 0.6s ease-out;
-        animation-delay: 0.2s;
-        animation-fill-mode: both;
-    }
-    
-    @keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    .form-card-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 1.5rem 2rem;
-        color: white;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .form-card-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        animation: rotate 20s linear infinite;
-    }
-    
-    .form-card-header h4 {
-        margin: 0;
-        font-weight: 700;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .form-card-body {
-        padding: 2rem;
-    }
-    
-    .section-card {
-        border: none;
-        border-radius: 16px;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-    
-    .section-card:hover {
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    }
-    
-    .section-card-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 2px solid #f0f0f0;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-    
-    .section-card-header:hover {
-        background: #f8f9ff;
-    }
-    
-    .section-card-header i {
-        font-size: 1.5rem;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 10px;
-        color: white;
-    }
-    
-    .section-card-header h5 {
-        margin: 0;
-        font-weight: 600;
-        color: #333;
-    }
-    
-    .section-card-header .toggle-icon {
-        margin-left: auto;
-        transition: transform 0.3s ease;
-    }
-    
-    .section-card.collapsed .toggle-icon {
-        transform: rotate(-180deg);
-    }
-    
-    .section-card-body {
-        padding: 1.5rem;
-    }
-    
-    .dept-info .section-card-header i {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .basic-info .section-card-header i {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    
-    .position-info .section-card-header i {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    
-    .report-info .section-card-header i {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    }
-    
-    .personal-info .section-card-header i {
-        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 0%, #fecfef 100%);
-    }
-    
-    .education-info .section-card-header i {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .id-info .section-card-header i {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    
-    .contract-info .section-card-header i {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    
-    .contact-info .section-card-header i {
-        background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-    }
-    
-    .financial-info .section-card-header i {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .other-info .section-card-header i {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    
-    .resignation-info .section-card-header i {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-    }
-    
-    .form-group {
-        margin-bottom: 1.5rem;
-    }
-    
-    .form-control {
-        border-radius: 12px;
-        border: 2px solid #e0e0e0;
-        padding: 12px 16px;
-        font-size: 1rem;
-        transition: all 0.3s;
-        height: auto;
-    }
-    
-    .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-    }
-    
-    .form-control-label {
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-    
-    .btn-submit {
-        border-radius: 12px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        padding: 14px 40px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        transition: all 0.3s;
-        width: 100%;
-    }
-    
-    .btn-submit:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-        color: white;
-    }
-    
-    .btn-cancel {
-        border-radius: 12px;
-        background: white;
-        border: 2px solid #667eea;
-        color: #667eea;
-        padding: 14px 40px;
-        font-size: 1.1rem;
-        font-weight: 600;
-        transition: all 0.3s;
-    }
-    
-    .btn-cancel:hover {
-        background: #667eea;
-        color: white;
-    }
-    
-    .row {
-        margin-bottom: 0;
-    }
-    
-    @media (max-width: 768px) {
-        .form-page-header {
-            padding: 1.5rem;
-        }
-        
-        .form-page-header h1 {
-            font-size: 1.8rem;
-        }
-        
-        .form-card-body {
-            padding: 1rem;
-        }
-        
-        .section-card-body {
-            padding: 1rem;
-        }
-    }
-</style>
-
-<div class="form-page-header">
-    <h1><i class="bi bi-person-plus-fill"></i> {{ legend }}</h1>
-    <p>{% if view_only %}查看员工详细信息{% else %}完善员工信息，构建完整的人力资源档案{% endif %}</p>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-person-plus-fill"></i> {{ legend }}</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">{% if view_only %}查看员工详细信息{% else %}完善员工信息，构建完整的人力资源档案{% endif %}</p>
+    </div>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('personnel.personnel_list') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    </div>
 </div>
 
-<div class="form-card">
-    <form method="POST" action="">
-        {% if not view_only %}
-        {{ form.hidden_tag() }}
-        {% endif %}
-        
-        <div class="form-card-body">
-            <!-- 部门信息 -->
-            <div class="section-card dept-info">
-                <div class="section-card-header" data-toggle="collapse" href="#dept-info">
-                    <i class="bi bi-building"></i>
-                    <h5>部门信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="dept-info" class="collapse show">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.company_dept.label(class="form-control-label") }}
-                                    {{ form.company_dept(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.factory_dept.label(class="form-control-label") }}
-                                    {{ form.factory_dept(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.dept_code.label(class="form-control-label") }}
-                                    {{ form.dept_code(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.dept_full_name.label(class="form-control-label") }}
-                                    {{ form.dept_full_name(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.business_unit.label(class="form-control-label") }}
-                                    {{ form.business_unit(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.first_level_dept_abbr.label(class="form-control-label") }}
-                                    {{ form.first_level_dept_abbr(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.org_category.label(class="form-control-label") }}
-                                    {{ form.org_category(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_family.label(class="form-control-label") }}
-                                    {{ form.job_family(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.work_location.label(class="form-control-label") }}
-                                    {{ form.work_location(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.dept_level1.label(class="form-control-label") }}
-                                    {{ form.dept_level1(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.dept_level2.label(class="form-control-label") }}
-                                    {{ form.dept_level2(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.dept_level3.label(class="form-control-label") }}
-                                    {{ form.dept_level3(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.dept_level4.label(class="form-control-label") }}
-                                    {{ form.dept_level4(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.leaf_dept.label(class="form-control-label") }}
-                                    {{ form.leaf_dept(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.region_org.label(class="form-control-label") }}
-                                    {{ form.region_org(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<form method="POST" action="">
+    {% if not view_only %}
+    {{ form.hidden_tag() }}
+    {% endif %}
+    
+    <!-- 部门信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('dept-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">
+                <i class="bi bi-building"></i>
             </div>
-            
-            <!-- 基本信息 -->
-            <div class="section-card basic-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#basic-info">
-                    <i class="bi bi-person"></i>
-                    <h5>基本信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="basic-info" class="collapse show">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emp_id.label(class="form-control-label") }}
-                                    {{ form.emp_id(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emp_name.label(class="form-control-label") }}
-                                    {{ form.emp_name(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emp_status.label(class="form-control-label") }}
-                                    {{ form.emp_status(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emp_gender.label(class="form-control-label") }}
-                                    {{ form.emp_gender(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emp_type.label(class="form-control-label") }}
-                                    {{ form.emp_type(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.hire_date.label(class="form-control-label") }}
-                                    {{ form.hire_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.group_hire_date.label(class="form-control-label") }}
-                                    {{ form.group_hire_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.is_probation.label(class="form-control-label") }}
-                                    {{ form.is_probation(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.probation_end_date.label(class="form-control-label") }}
-                                    {{ form.probation_end_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.regular_date.label(class="form-control-label") }}
-                                    {{ form.regular_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 职位信息 -->
-            <div class="section-card position-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#position-info">
-                    <i class="bi bi-briefcase"></i>
-                    <h5>职位信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="position-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.position.label(class="form-control-label") }}
-                                    {{ form.position(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.position_category.label(class="form-control-label") }}
-                                    {{ form.position_category(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.position_grade.label(class="form-control-label") }}
-                                    {{ form.position_grade(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_type.label(class="form-control-label") }}
-                                    {{ form.job_type(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_category.label(class="form-control-label") }}
-                                    {{ form.job_category(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_sequence.label(class="form-control-label") }}
-                                    {{ form.job_sequence(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_title.label(class="form-control-label") }}
-                                    {{ form.job_title(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.acting_appointment.label(class="form-control-label") }}
-                                    {{ form.acting_appointment(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.project_job.label(class="form-control-label") }}
-                                    {{ form.project_job(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_rank.label(class="form-control-label") }}
-                                    {{ form.job_rank(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.daily_salary_grade.label(class="form-control-label") }}
-                                    {{ form.daily_salary_grade(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.qualification_grade.label(class="form-control-label") }}
-                                    {{ form.qualification_grade(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.professional_grade.label(class="form-control-label") }}
-                                    {{ form.professional_grade(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.job_level.label(class="form-control-label") }}
-                                    {{ form.job_level(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.project_job_level.label(class="form-control-label") }}
-                                    {{ form.project_job_level(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.talent_tag.label(class="form-control-label") }}
-                                    {{ form.talent_tag(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.is_mentor.label(class="form-control-label") }}
-                                    {{ form.is_mentor(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 汇报关系 -->
-            <div class="section-card report-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#report-info">
-                    <i class="bi bi-people"></i>
-                    <h5>汇报关系</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="report-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.report_superior_id.label(class="form-control-label") }}
-                                    {{ form.report_superior_id(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.report_superior.label(class="form-control-label") }}
-                                    {{ form.report_superior(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.dept_head_id.label(class="form-control-label") }}
-                                    {{ form.dept_head_id(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.dept_head.label(class="form-control-label") }}
-                                    {{ form.dept_head(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 个人信息 -->
-            <div class="section-card personal-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#personal-info">
-                    <i class="bi bi-heart"></i>
-                    <h5>个人信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="personal-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.nationality.label(class="form-control-label") }}
-                                    {{ form.nationality(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.birthplace.label(class="form-control-label") }}
-                                    {{ form.birthplace(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.ethnicity.label(class="form-control-label") }}
-                                    {{ form.ethnicity(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.marital_status.label(class="form-control-label") }}
-                                    {{ form.marital_status(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.political_status.label(class="form-control-label") }}
-                                    {{ form.political_status(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 教育信息 -->
-            <div class="section-card education-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#education-info">
-                    <i class="bi bi-mortarboard"></i>
-                    <h5>教育信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="education-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.highest_education_type.label(class="form-control-label") }}
-                                    {{ form.highest_education_type(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.highest_education_mode.label(class="form-control-label") }}
-                                    {{ form.highest_education_mode(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.highest_education.label(class="form-control-label") }}
-                                    {{ form.highest_education(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.school.label(class="form-control-label") }}
-                                    {{ form.school(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.major.label(class="form-control-label") }}
-                                    {{ form.major(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.education_start_date.label(class="form-control-label") }}
-                                    {{ form.education_start_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.education_end_date.label(class="form-control-label") }}
-                                    {{ form.education_end_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.first_education.label(class="form-control-label") }}
-                                    {{ form.first_education(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.second_education.label(class="form-control-label") }}
-                                    {{ form.second_education(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 身份信息 -->
-            <div class="section-card id-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#id-info">
-                    <i class="bi bi-credit-card"></i>
-                    <h5>身份信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="id-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.birth_date.label(class="form-control-label") }}
-                                    {{ form.birth_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.age.label(class="form-control-label") }}
-                                    {{ form.age(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.id_type.label(class="form-control-label") }}
-                                    {{ form.id_type(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.id_number.label(class="form-control-label") }}
-                                    {{ form.id_number(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.id_expiry.label(class="form-control-label") }}
-                                    {{ form.id_expiry(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    {{ form.id_address.label(class="form-control-label") }}
-                                    {{ form.id_address(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 合同信息 -->
-            <div class="section-card contract-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#contract-info">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <h5>合同信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="contract-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.legal_entity.label(class="form-control-label") }}
-                                    {{ form.legal_entity(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.contract_entity.label(class="form-control-label") }}
-                                    {{ form.contract_entity(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.contract_type.label(class="form-control-label") }}
-                                    {{ form.contract_type(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.contract_start_date.label(class="form-control-label") }}
-                                    {{ form.contract_start_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.contract_end_date.label(class="form-control-label") }}
-                                    {{ form.contract_end_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.labor_company.label(class="form-control-label") }}
-                                    {{ form.labor_company(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 联系信息 -->
-            <div class="section-card contact-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#contact-info">
-                    <i class="bi bi-telephone"></i>
-                    <h5>联系信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="contact-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.current_residence.label(class="form-control-label") }}
-                                    {{ form.current_residence(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.registered_residence.label(class="form-control-label") }}
-                                    {{ form.registered_residence(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.phone_number.label(class="form-control-label") }}
-                                    {{ form.phone_number(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emergency_contact_name.label(class="form-control-label") }}
-                                    {{ form.emergency_contact_name(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.emergency_contact_phone.label(class="form-control-label") }}
-                                    {{ form.emergency_contact_phone(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 财务信息 -->
-            <div class="section-card financial-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#financial-info">
-                    <i class="bi bi-bank"></i>
-                    <h5>财务信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="financial-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.bank_name.label(class="form-control-label") }}
-                                    {{ form.bank_name(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.bank_branch.label(class="form-control-label") }}
-                                    {{ form.bank_branch(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.bank_account.label(class="form-control-label") }}
-                                    {{ form.bank_account(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    {{ form.financial_code.label(class="form-control-label") }}
-                                    {{ form.financial_code(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 其他信息 -->
-            <div class="section-card other-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#other-info">
-                    <i class="bi bi-three-dots"></i>
-                    <h5>其他信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="other-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.union_member.label(class="form-control-label") }}
-                                    {{ form.union_member(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.is_veteran.label(class="form-control-label") }}
-                                    {{ form.is_veteran(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.initial_social_insurance_unit.label(class="form-control-label") }}
-                                    {{ form.initial_social_insurance_unit(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.has_fuel_card.label(class="form-control-label") }}
-                                    {{ form.has_fuel_card(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 离职信息 -->
-            <div class="section-card resignation-info">
-                <div class="section-card-header" data-bs-toggle="collapse" data-bs-target="#resignation-info">
-                    <i class="bi bi-door-open"></i>
-                    <h5>离职信息</h5>
-                    <i class="bi bi-chevron-down toggle-icon"></i>
-                </div>
-                <div id="resignation-info" class="collapse">
-                    <div class="section-card-body">
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.resignation_date.label(class="form-control-label") }}
-                                    {{ form.resignation_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.last_pay_date.label(class="form-control-label") }}
-                                    {{ form.last_pay_date(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    {{ form.resignation_type.label(class="form-control-label") }}
-                                    {{ form.resignation_type(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.resignation_reason.label(class="form-control-label") }}
-                                    {{ form.resignation_reason(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    {{ form.is_blacklisted.label(class="form-control-label") }}
-                                    {{ form.is_blacklisted(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    {{ form.resignation_reason_detail.label(class="form-control-label") }}
-                                    {{ form.resignation_reason_detail(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-12">
-                                <div class="form-group">
-                                    {{ form.resignation_interview.label(class="form-control-label") }}
-                                    {{ form.resignation_interview(class="form-control" + (" readonly" if view_only else "")) }}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- 提交按钮 -->
-            {% if not view_only %}
-            <div class="text-center mt-4">
-                <div class="row justify-content-center">
-                    <div class="col-md-6">
-                        {{ form.submit(class="btn btn-submit") }}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
+            <span style="font-weight:600;flex:1">部门信息</span>
+            <i class="bi bi-chevron-down" id="dept-info-icon" style="transition:transform 0.3s"></i>
         </div>
-    </form>
-</div>
+        <div id="dept-info" class="mi-card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.company_dept.label.text }}</label>
+                    {{ form.company_dept(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.factory_dept.label.text }}</label>
+                    {{ form.factory_dept(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_code.label.text }}</label>
+                    {{ form.dept_code(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_full_name.label.text }}</label>
+                    {{ form.dept_full_name(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.business_unit.label.text }}</label>
+                    {{ form.business_unit(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.first_level_dept_abbr.label.text }}</label>
+                    {{ form.first_level_dept_abbr(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.org_category.label.text }}</label>
+                    {{ form.org_category(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_family.label.text }}</label>
+                    {{ form.job_family(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.work_location.label.text }}</label>
+                    {{ form.work_location(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_level1.label.text }}</label>
+                    {{ form.dept_level1(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_level2.label.text }}</label>
+                    {{ form.dept_level2(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_level3.label.text }}</label>
+                    {{ form.dept_level3(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_level4.label.text }}</label>
+                    {{ form.dept_level4(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.leaf_dept.label.text }}</label>
+                    {{ form.leaf_dept(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.region_org.label.text }}</label>
+                    {{ form.region_org(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 基本信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('basic-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">
+                <i class="bi bi-person"></i>
+            </div>
+            <span style="font-weight:600;flex:1">基本信息</span>
+            <i class="bi bi-chevron-down" id="basic-info-icon" style="transition:transform 0.3s"></i>
+        </div>
+        <div id="basic-info" class="mi-card-body">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emp_id.label.text }}</label>
+                    {{ form.emp_id(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emp_name.label.text }}</label>
+                    {{ form.emp_name(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emp_status.label.text }}</label>
+                    {{ form.emp_status(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emp_gender.label.text }}</label>
+                    {{ form.emp_gender(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emp_type.label.text }}</label>
+                    {{ form.emp_type(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.hire_date.label.text }}</label>
+                    {{ form.hire_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.group_hire_date.label.text }}</label>
+                    {{ form.group_hire_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.is_probation.label.text }}</label>
+                    {{ form.is_probation(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.probation_end_date.label.text }}</label>
+                    {{ form.probation_end_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.regular_date.label.text }}</label>
+                    {{ form.regular_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 职位信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('position-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #f093fb 0%, #f5576c 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">
+                <i class="bi bi-briefcase"></i>
+            </div>
+            <span style="font-weight:600;flex:1">职位信息</span>
+            <i class="bi bi-chevron-down" id="position-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="position-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.position.label.text }}</label>
+                    {{ form.position(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.position_category.label.text }}</label>
+                    {{ form.position_category(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.position_grade.label.text }}</label>
+                    {{ form.position_grade(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_type.label.text }}</label>
+                    {{ form.job_type(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_category.label.text }}</label>
+                    {{ form.job_category(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_sequence.label.text }}</label>
+                    {{ form.job_sequence(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_title.label.text }}</label>
+                    {{ form.job_title(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.acting_appointment.label.text }}</label>
+                    {{ form.acting_appointment(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.project_job.label.text }}</label>
+                    {{ form.project_job(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_rank.label.text }}</label>
+                    {{ form.job_rank(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.daily_salary_grade.label.text }}</label>
+                    {{ form.daily_salary_grade(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.qualification_grade.label.text }}</label>
+                    {{ form.qualification_grade(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.professional_grade.label.text }}</label>
+                    {{ form.professional_grade(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.job_level.label.text }}</label>
+                    {{ form.job_level(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.project_job_level.label.text }}</label>
+                    {{ form.project_job_level(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.talent_tag.label.text }}</label>
+                    {{ form.talent_tag(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.is_mentor.label.text }}</label>
+                    {{ form.is_mentor(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 汇报关系 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('report-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);display:flex;align-items:center;justify-content:center;color:#333;flex-shrink:0">
+                <i class="bi bi-diagram-3"></i>
+            </div>
+            <span style="font-weight:600;flex:1">汇报关系</span>
+            <i class="bi bi-chevron-down" id="report-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="report-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.report_superior_id.label.text }}</label>
+                    {{ form.report_superior_id(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.report_superior.label.text }}</label>
+                    {{ form.report_superior(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_head_id.label.text }}</label>
+                    {{ form.dept_head_id(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.dept_head.label.text }}</label>
+                    {{ form.dept_head(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 个人信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('personal-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);display:flex;align-items:center;justify-content:center;color:#333;flex-shrink:0">
+                <i class="bi bi-person-vcard"></i>
+            </div>
+            <span style="font-weight:600;flex:1">个人信息</span>
+            <i class="bi bi-chevron-down" id="personal-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="personal-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.nationality.label.text }}</label>
+                    {{ form.nationality(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.birthplace.label.text }}</label>
+                    {{ form.birthplace(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.ethnicity.label.text }}</label>
+                    {{ form.ethnicity(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.marital_status.label.text }}</label>
+                    {{ form.marital_status(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.political_status.label.text }}</label>
+                    {{ form.political_status(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 教育信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('education-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);display:flex;align-items:center;justify-content:center;color:#333;flex-shrink:0">
+                <i class="bi bi-mortarboard"></i>
+            </div>
+            <span style="font-weight:600;flex:1">教育信息</span>
+            <i class="bi bi-chevron-down" id="education-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="education-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.highest_education_type.label.text }}</label>
+                    {{ form.highest_education_type(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.highest_education_mode.label.text }}</label>
+                    {{ form.highest_education_mode(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.highest_education.label.text }}</label>
+                    {{ form.highest_education(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.school.label.text }}</label>
+                    {{ form.school(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.major.label.text }}</label>
+                    {{ form.major(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.education_start_date.label.text }}</label>
+                    {{ form.education_start_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.education_end_date.label.text }}</label>
+                    {{ form.education_end_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.first_education.label.text }}</label>
+                    {{ form.first_education(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.second_education.label.text }}</label>
+                    {{ form.second_education(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 身份信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('id-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);display:flex;align-items:center;justify-content:center;color:#333;flex-shrink:0">
+                <i class="bi bi-card-checklist"></i>
+            </div>
+            <span style="font-weight:600;flex:1">身份信息</span>
+            <i class="bi bi-chevron-down" id="id-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="id-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.birth_date.label.text }}</label>
+                    {{ form.birth_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.age.label.text }}</label>
+                    {{ form.age(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.id_type.label.text }}</label>
+                    {{ form.id_type(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.id_number.label.text }}</label>
+                    {{ form.id_number(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.id_address.label.text }}</label>
+                    {{ form.id_address(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.id_expiry.label.text }}</label>
+                    {{ form.id_expiry(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 合同信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('contract-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">
+                <i class="bi bi-file-earmark-text"></i>
+            </div>
+            <span style="font-weight:600;flex:1">合同信息</span>
+            <i class="bi bi-chevron-down" id="contract-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="contract-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.legal_entity.label.text }}</label>
+                    {{ form.legal_entity(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.contract_entity.label.text }}</label>
+                    {{ form.contract_entity(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.contract_type.label.text }}</label>
+                    {{ form.contract_type(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.contract_start_date.label.text }}</label>
+                    {{ form.contract_start_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.contract_end_date.label.text }}</label>
+                    {{ form.contract_end_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.labor_company.label.text }}</label>
+                    {{ form.labor_company(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 联系信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('contact-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);display:flex;align-items:center;justify-content:center;color:#333;flex-shrink:0">
+                <i class="bi bi-telephone"></i>
+            </div>
+            <span style="font-weight:600;flex:1">联系信息</span>
+            <i class="bi bi-chevron-down" id="contact-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="contact-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.current_residence.label.text }}</label>
+                    {{ form.current_residence(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.registered_residence.label.text }}</label>
+                    {{ form.registered_residence(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.phone_number.label.text }}</label>
+                    {{ form.phone_number(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emergency_contact_name.label.text }}</label>
+                    {{ form.emergency_contact_name(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.emergency_contact_phone.label.text }}</label>
+                    {{ form.emergency_contact_phone(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 财务信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('finance-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #fa709a 0%, #fee140 100%);display:flex;align-items:center;justify-content:center;color:#333;flex-shrink:0">
+                <i class="bi bi-credit-card"></i>
+            </div>
+            <span style="font-weight:600;flex:1">财务信息</span>
+            <i class="bi bi-chevron-down" id="finance-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="finance-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.bank_name.label.text }}</label>
+                    {{ form.bank_name(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.bank_branch.label.text }}</label>
+                    {{ form.bank_branch(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.bank_account.label.text }}</label>
+                    {{ form.bank_account(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.financial_code.label.text }}</label>
+                    {{ form.financial_code(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 其他信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('other-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #a8caba 0%, #5d4e37 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">
+                <i class="bi bi-three-dots"></i>
+            </div>
+            <span style="font-weight:600;flex:1">其他信息</span>
+            <i class="bi bi-chevron-down" id="other-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="other-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.union_member.label.text }}</label>
+                    {{ form.union_member(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.is_veteran.label.text }}</label>
+                    {{ form.is_veteran(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.initial_social_insurance_unit.label.text }}</label>
+                    {{ form.initial_social_insurance_unit(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.has_fuel_card.label.text }}</label>
+                    {{ form.has_fuel_card(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 离职信息 -->
+    <div class="mi-card" style="margin-bottom:16px">
+        <div class="mi-card-header" onclick="toggleSection('resign-info')" style="cursor:pointer;display:flex;align-items:center;gap:12px">
+            <div style="width:36px;height:36px;border-radius:8px;background:linear-gradient(135deg, #bdc3c7 0%, #2c3e50 100%);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0">
+                <i class="bi bi-box-arrow-right"></i>
+            </div>
+            <span style="font-weight:600;flex:1">离职信息</span>
+            <i class="bi bi-chevron-down" id="resign-info-icon" style="transition:transform 0.3s;transform:rotate(-90deg)"></i>
+        </div>
+        <div id="resign-info" class="mi-card-body" style="display:none">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.resignation_date.label.text }}</label>
+                    {{ form.resignation_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.last_pay_date.label.text }}</label>
+                    {{ form.last_pay_date(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.resignation_type.label.text }}</label>
+                    {{ form.resignation_type(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.resignation_reason.label.text }}</label>
+                    {{ form.resignation_reason(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.is_blacklisted.label.text }}</label>
+                    {{ form.is_blacklisted(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.resignation_reason_detail.label.text }}</label>
+                    {{ form.resignation_reason_detail(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">{{ form.resignation_interview.label.text }}</label>
+                    {{ form.resignation_interview(class="mi-input" + (" mi-input-readonly" if view_only else "")) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if not view_only %}
+    <div style="display:flex;gap:12px;justify-content:center;padding:16px 0">
+        <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 保存</button>
+        <a href="{{ url_for('personnel.personnel_list') }}" class="mi-btn mi-btn-default"><i class="bi bi-x-lg"></i> 取消</a>
+    </div>
+    {% endif %}
+</form>
 {% endblock %}
 
+{% block extra_js %}
+<script>
+function toggleSection(id) {
+    var section = document.getElementById(id);
+    var icon = document.getElementById(id + '-icon');
+    if (section.style.display === 'none') {
+        section.style.display = 'block';
+        icon.style.transform = 'rotate(0deg)';
+    } else {
+        section.style.display = 'none';
+        icon.style.transform = 'rotate(-90deg)';
+    }
+}
+</script>
+{% endblock %}

@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy import or_
 from app import db, bcrypt
 from app.models import User, Department, LoginLog, OperationLog, SysRole, SysUserRole
-from app.decorators import admin_required
+from app.decorators import admin_required, clear_permission_cache
 from functools import wraps
 
 bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -94,6 +94,10 @@ def add_user():
             flash('用户名、邮箱和密码为必填项', 'danger')
             return redirect(url_for('admin.add_user'))
         
+        if len(password) < 6:
+            flash('密码长度不能少于6位', 'danger')
+            return redirect(url_for('admin.add_user'))
+        
         if password != confirm_password:
             flash('两次密码输入不一致', 'danger')
             return redirect(url_for('admin.add_user'))
@@ -138,8 +142,9 @@ def add_user():
 @login_required
 @admin_required
 def edit_user(user_id):
-    """编辑用户"""
+    """编辑用户（含角色配置）"""
     user = User.query.get_or_404(user_id)
+    all_roles = SysRole.query.filter_by(status=1).order_by(SysRole.sort_order).all()
     
     if request.method == 'POST':
         user.username = request.form.get('username', user.username)
@@ -147,12 +152,11 @@ def edit_user(user_id):
         user.real_name = request.form.get('real_name')
         user.emp_id = request.form.get('emp_id')
         user.phone = request.form.get('phone')
-        user.role = request.form.get('role', user.role)
         department_id = request.form.get('department_id')
         user.department_id = department_id if department_id else None
         user.updated_at = datetime.utcnow()
         
-        # 检查用户名和邮箱是否被其他用户占用
+        # 检查用户名和邮箱
         existing_user = User.query.filter(User.username == user.username, User.id != user_id).first()
         if existing_user:
             flash('用户名已存在', 'danger')
@@ -162,18 +166,35 @@ def edit_user(user_id):
         if existing_email:
             flash('邮箱已存在', 'danger')
             return redirect(url_for('admin.edit_user', user_id=user_id))
+
+        # 更新角色（如果用户更新了,兼容新旧两层）
+        if 'role' in request.form:
+            user.role = request.form.get('role', user.role)
+        else:
+            user.role = 'user'
+
+        # 更新 RBAC 角色
+        selected_roles = request.form.getlist('roles')
+        SysUserRole.query.filter_by(user_id=user_id).delete()
+        for role_id in selected_roles:
+            ur = SysUserRole(user_id=user_id, role_id=int(role_id))
+            db.session.add(ur)
         
         db.session.commit()
+
+        clear_permission_cache(user_id)
         
-        # 记录操作日志
-        log_operation('edit', '用户管理', f'编辑用户: {user.username}')
+        log_operation('edit', '用户管理', f'编辑用户: {user.username}（角色: {len(selected_roles)}个）')
         
         flash('用户信息已更新', 'success')
         return redirect(url_for('admin.users'))
     
-    # GET请求 - 显示表单
+    # GET
     departments = Department.query.filter_by(is_active=True).all()
-    return render_template('admin/user_form.html', user=user, departments=departments)
+    user_role_ids = [r.role_id for r in SysUserRole.query.filter_by(user_id=user_id).all()]
+    
+    return render_template('admin/user_form.html', user=user, departments=departments,
+                           all_roles=all_roles, user_role_ids=user_role_ids)
 
 
 @bp.route('/users/toggle/<int:user_id>', methods=['POST'])
@@ -253,6 +274,40 @@ def delete_user(user_id):
     log_operation('delete', '用户管理', f'删除用户: {username}')
     
     return jsonify({'success': True, 'message': '用户已删除'})
+
+
+# ==================== 用户权限配置 ====================
+
+@bp.route('/users/<int:user_id>/permissions', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def user_permissions(user_id):
+    """配置用户的角色权限"""
+    user = User.query.get_or_404(user_id)
+    all_roles = SysRole.query.filter_by(status=1).order_by(SysRole.sort_order).all()
+
+    if request.method == 'POST':
+        selected_roles = request.form.getlist('roles')
+
+        SysUserRole.query.filter_by(user_id=user_id).delete()
+
+        for role_id in selected_roles:
+            ur = SysUserRole(user_id=user_id, role_id=int(role_id))
+            db.session.add(ur)
+
+        db.session.commit()
+
+        clear_permission_cache(user_id)
+
+        log_operation('edit', '权限管理', f'修改用户 {user.username} 的角色权限为 {len(selected_roles)} 个角色')
+
+        flash(f'用户 {user.username} 的权限已更新', 'success')
+        return redirect(url_for('admin.users'))
+
+    user_role_ids = [r.role_id for r in SysUserRole.query.filter_by(user_id=user_id).all()]
+
+    return render_template('admin/user_permissions.html',
+                           user=user, roles=all_roles, user_role_ids=user_role_ids)
 
 
 # ==================== 登录日志 ====================
@@ -382,4 +437,5 @@ def log_operation(operation_type, module, description):
         db.session.add(log)
         db.session.commit()
     except Exception as e:
-        print(f'记录操作日志失败: {e}')
+        from flask import current_app
+        current_app.logger.error(f'记录操作日志失败: {e}')

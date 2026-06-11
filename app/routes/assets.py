@@ -34,14 +34,30 @@ def dashboard():
         cached = _dashboard_cache['data']
         return render_template('dashboard.html', **cached)
 
+    from app.models import Personnel, ComputerInfo, IndustrialComputer, Department, LoginLog
+    
     office_computers_count = ComputerInfo.query.count()
     industrial_computers_count = IndustrialComputer.query.count()
     personnel_count = Personnel.query.filter_by(emp_status='在职').count()
+    personnel_total = Personnel.query.count()
+    dept_count = Department.query.count()
+    login_logs = LoginLog.query.order_by(LoginLog.login_time.desc()).limit(10).all()
+    
+    # 操作系统分布概览
+    os_counts = {}
+    for c in ComputerInfo.query.with_entities(ComputerInfo.operating_system).all():
+        os = c.operating_system[:10] if c.operating_system else '未知'
+        os_counts[os] = os_counts.get(os, 0) + 1
+    os_summary = sorted(os_counts.items(), key=lambda x: -x[1])[:5]
 
     data = {
         'office_computers_count': office_computers_count,
         'industrial_computers_count': industrial_computers_count,
-        'personnel_count': personnel_count
+        'personnel_count': personnel_count,
+        'personnel_total': personnel_total,
+        'dept_count': dept_count,
+        'login_logs': login_logs,
+        'os_summary': os_summary
     }
     _dashboard_cache['data'] = data
     _dashboard_cache['timestamp'] = now
@@ -52,9 +68,9 @@ def dashboard():
 @bp.route('/office_computers')
 @department_permission_required
 def office_computers():
-    search = request.args.get('search', '')
-    page = request.args.get('page', 1, type=int)
-    per_page = 50
+    search = request.args.get('search', '').strip()[:100]
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = max(min(request.args.get('per_page', 50, type=int), 200), 10)
     
     query = ComputerInfo.query.order_by(ComputerInfo.id.desc())
     
@@ -78,17 +94,20 @@ def office_computers():
         )
         query = query.filter(search_filter)
     
+    # 先获取总数
+    total = query.count()
+    
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     items = pagination.items
     
-    return render_template('assets/office_computers.html', computer_infos=items, pagination=pagination, search=search)
+    return render_template('assets/office_computers.html', computer_infos=items, pagination=pagination, search=search, per_page=per_page, total=total)
 
 # 工控机管理
 @bp.route('/industrial_computers')
 @department_permission_required
 def industrial_computers():
-    search = request.args.get('search')
-    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '').strip()[:100] if request.args.get('search') else None
+    page = max(request.args.get('page', 1, type=int), 1)
     per_page = 50
     
     query = IndustrialComputer.query.order_by(IndustrialComputer.id.desc())
@@ -246,7 +265,10 @@ def export_computers():
         )
         query = query.filter(search_filter)
     
-    computers = query.all()
+    # 限制导出数量，防止内存溢出
+    MAX_EXPORT_ROWS = 10000
+    total_count = query.count()
+    computers = query.limit(MAX_EXPORT_ROWS).all()
     
     # 创建工作簿
     wb = openpyxl.Workbook()
@@ -321,16 +343,21 @@ def export_computers():
     wb.save(output)
     output.seek(0)
     
+    download_name = f'办公电脑数据_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    if total_count > MAX_EXPORT_ROWS:
+        download_name = f'办公电脑数据_前{MAX_EXPORT_ROWS}条_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name=f'办公电脑数据_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        download_name=download_name
     )
 
 
 @bp.route('/office_computers/import', methods=['POST'])
 @login_required
+@department_permission_required
 def import_computers():
     """导入办公电脑数据"""
     # 检查是否有文件
@@ -347,12 +374,17 @@ def import_computers():
     if not allowed_file(file.filename):
         return jsonify({'success': False, 'message': '只支持 .xlsx 或 .xls 格式的文件'}), 400
     
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    max_size = 10 * 1024 * 1024
+    if file_size > max_size:
+        return jsonify({'success': False, 'message': f'文件过大，最大支持{max_size // 1024 // 1024}MB'}), 400
+    
     try:
-        # 读取Excel文件
         wb = openpyxl.load_workbook(file)
         ws = wb.active
         
-        # 字段映射（中文 -> 数据库字段）
         field_mapping = {
             '电脑名称*': 'computer_name',
             '电脑名称': 'computer_name',
@@ -557,7 +589,10 @@ def export_industrial_computers():
         )
         query = query.filter(search_filter)
     
-    items = query.order_by(IndustrialComputer.id.desc()).all()
+    # 限制导出数量，防止内存溢出
+    MAX_EXPORT_ROWS = 10000
+    total_count = query.count()
+    items = query.order_by(IndustrialComputer.id.desc()).limit(MAX_EXPORT_ROWS).all()
     
     # 创建工作簿
     wb = openpyxl.Workbook()
@@ -604,16 +639,21 @@ def export_industrial_computers():
     wb.save(output)
     output.seek(0)
     
+    download_name = f'工控机数据_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    if total_count > MAX_EXPORT_ROWS:
+        download_name = f'工控机数据_前{MAX_EXPORT_ROWS}条_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+    
     return send_file(
         output,
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         as_attachment=True,
-        download_name=f'工控机数据_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        download_name=download_name
     )
 
 
 @bp.route('/industrial_computers/import', methods=['POST'])
 @login_required
+@department_permission_required
 def import_industrial_computers():
     """导入工控机数据"""
     if 'file' not in request.files:
@@ -627,11 +667,16 @@ def import_industrial_computers():
     if not allowed_file(file.filename):
         return jsonify({'success': False, 'message': '只支持 .xlsx 或 .xls 格式的文件'}), 400
     
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    if file_size > 10 * 1024 * 1024:
+        return jsonify({'success': False, 'message': '文件过大，最大支持10MB'}), 400
+    
     try:
         wb = openpyxl.load_workbook(file)
         ws = wb.active
         
-        # 字段映射（中文 -> 数据库字段）
         field_mapping = {name: field for name, field in INDUSTRIAL_COMPUTER_FIELDS}
         
         # 读取表头

@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, Response
 from flask_login import login_required, current_user
 from app import db
-from app.models import Personnel, ComputerInfo, Department, User
+from app.models import Personnel, ComputerInfo, Department, User, ChatSession, ChatMessage
 from datetime import datetime
 import re
 import requests
@@ -19,15 +19,15 @@ def api_key_required(f):
     """API Key认证装饰器，用于外部程序调用"""
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        # 从请求头或URL参数获取API Key
         api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
         
-        # 从配置或数据库获取有效的API Key列表
         valid_api_keys = current_app.config.get('AI_API_KEYS', [])
         
-        # 如果没有配置，允许使用默认key（生产环境应该配置）
         if not valid_api_keys:
-            valid_api_keys = ['asset-ai-api-key-2024']
+            return jsonify({
+                'success': False,
+                'error': 'AI API未配置密钥，请联系管理员在.env中设置AI_API_KEYS'
+            }), 401
         
         if not api_key or api_key not in valid_api_keys:
             return jsonify({
@@ -36,6 +36,8 @@ def api_key_required(f):
             }), 401
         
         return f(*args, **kwargs)
+    # 标记为CSRF豁免，因为API路由使用API Key认证，不需要CSRF token
+    decorated_function._csrf_exempt = True
     return decorated_function
 
 @bp.route('/ai-assistant')
@@ -62,7 +64,7 @@ def call_llm_api_v2(config, messages, timeout=300):
                 response_json = response.json()
                 message = response_json.get('choices', [{}])[0].get('message', {})
                 content = message.get('content', '')
-                thinking = message.get('thinking', '') or message.get('reasoning_content', '')
+                thinking = message.get('reasoning', '') or message.get('thinking', '') or message.get('reasoning_content', '')
                 if thinking and content:
                     return f"思考过程:\n{thinking}\n\n回答:\n{content}"
                 return content
@@ -95,20 +97,170 @@ def call_llm_api_v2(config, messages, timeout=300):
         except requests.exceptions.Timeout:
             raise Exception("MiniMax请求超时")
 
-def check_if_needs_database_query_v2(question, db_schema, config):
-    prompt = f"""判断用户问题是否需要查询数据库。
 
-数据库表：{db_schema}
+def call_llm_api_stream(config, messages, timeout=300):
+    """流式调用LLM API，逐token返回内容
+    
+    Yields:
+        dict: {'type': 'thinking', 'content': '...'} for thinking/reasoning content
+              {'type': 'content', 'content': '...'} for answer content
+              {'type': 'error', 'content': '...'} for errors
+    """
+    provider = config['provider']
+    api_key = config['api_key']
+    model = config['model']
+    
+    logger.info(f"Calling LLM API (stream) - Provider: {provider}, Model: {model}")
+    
+    if provider == 'ollama':
+        api_base = config['ollama_api_base']
+        url = f"{api_base.rstrip('/')}/chat/completions"
+        payload = {"model": model, "messages": messages, "stream": True}
+        try:
+            response = requests.post(url, json=payload, timeout=timeout, stream=True)
+            response.encoding = 'utf-8'
+            if response.status_code == 200:
+                for line in response.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith('data: '):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == '[DONE]':
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        delta = chunk.get('choices', [{}])[0].get('delta', {})
+                        # Ollama的qwen3.5等推理模型用"reasoning"字段返回思考内容
+                        thinking_content = delta.get('reasoning', '') or delta.get('thinking', '') or delta.get('reasoning_content', '')
+                        if thinking_content:
+                            yield {'type': 'thinking', 'content': thinking_content}
+                        content = delta.get('content', '')
+                        if content:
+                            yield {'type': 'content', 'content': content}
+                    except json.JSONDecodeError:
+                        continue
+            else:
+                yield {'type': 'error', 'content': f'Ollama API返回 {response.status_code}'}
+        except requests.exceptions.Timeout:
+            yield {'type': 'error', 'content': 'Ollama请求超时'}
+        except Exception as e:
+            yield {'type': 'error', 'content': str(e)}
+    elif provider == 'openai':
+        api_base = config['openai_api_base']
+        url = f"{api_base.rstrip('/')}/chat/completions"
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        payload = {"model": model, "messages": messages, "stream": True}
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout, stream=True)
+            response.encoding = 'utf-8'
+            if response.status_code == 200:
+                for line in response.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith('data: '):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == '[DONE]':
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        delta = chunk.get('choices', [{}])[0].get('delta', {})
+                        thinking_content = delta.get('reasoning_content', '') or delta.get('thinking', '')
+                        if thinking_content:
+                            yield {'type': 'thinking', 'content': thinking_content}
+                        content = delta.get('content', '')
+                        if content:
+                            yield {'type': 'content', 'content': content}
+                    except json.JSONDecodeError:
+                        continue
+            else:
+                yield {'type': 'error', 'content': f'OpenAI API返回 {response.status_code}'}
+        except requests.exceptions.Timeout:
+            yield {'type': 'error', 'content': 'OpenAI请求超时'}
+        except Exception as e:
+            yield {'type': 'error', 'content': str(e)}
+    else:
+        url = "https://api.minimax.chat/v1/text/chatcompletion_v2"
+        headers = {"Authorization": f"Bearer {config['minimax_api_key']}", "Content-Type": "application/json"}
+        payload = {"model": model, "messages": messages, "stream": True}
+        try:
+            response = requests.post(url, headers=headers, json=payload, timeout=timeout, stream=True)
+            response.encoding = 'utf-8'
+            if response.status_code == 200:
+                for line in response.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith('data: '):
+                        continue
+                    data_str = line[6:].strip()
+                    if data_str == '[DONE]':
+                        break
+                    try:
+                        chunk = json.loads(data_str)
+                        delta = chunk.get('choices', [{}])[0].get('delta', {})
+                        content = delta.get('content', '')
+                        if content:
+                            yield {'type': 'content', 'content': content}
+                    except json.JSONDecodeError:
+                        continue
+            else:
+                yield {'type': 'error', 'content': f'MiniMax API返回 {response.status_code}'}
+        except requests.exceptions.Timeout:
+            yield {'type': 'error', 'content': 'MiniMax请求超时'}
+        except Exception as e:
+            yield {'type': 'error', 'content': str(e)}
+
+
+def is_obviously_non_db_query(question):
+    """快速关键词判断：明显不需要查数据库的问题直接跳过意图识别，省2-10秒"""
+    non_db_keywords = [
+        '写', '作文', '故事', '笑话', '诗', '歌词', '小说', '文章', '演讲稿',
+        '总结', '概括', '翻译', '解释', '什么是', '为什么', '怎么', '如何',
+        '帮我', '你能', '请问', '你好', '早上好', '下午好', '晚上好',
+        '天气', '今天', '推荐', '建议', '想法', '看法', '观点',
+        '对比', '区别', '意义', '影响', '原因', '方法',
+        '谢谢', '感谢', '再见', '拜拜', '哈哈', '嗯嗯',
+        '汇报', '材料', '报告', '方案', '计划', 'PPT', 'ppt',
+        '流程', '步骤', '模板', '格式', '范文', '示例'
+    ]
+    # 检查是否包含明显的数据库查询关键词
+    db_keywords = [
+        '查询', '查找', '搜索', '列出', '统计', '多少', '几个', '人数',
+        '工号', 'IP', '电话', '部门', '员工', '电脑', '在职', '离职',
+        '资产', '姓名', '职位', '职级', '入职', '操作系统',
+        '住址', '地址', '家庭住址', '居住地', '户籍', '身份证地址'
+    ]
+    has_db_keyword = any(kw in question for kw in db_keywords)
+    has_non_db_keyword = any(kw in question for kw in non_db_keywords)
+    
+    # 如果有数据库关键词，不做跳过（让LLM判断）
+    if has_db_keyword:
+        return False
+    # 如果有非数据库关键词，直接跳过
+    if has_non_db_keyword:
+        return True
+    return False
+
+
+def check_if_needs_database_query_v2(question, db_schema, config):
+    prompt = f"""判断用户问题是否需要查询数据库来回答。
 
 用户问题：{question}
 
-规则：涉及查询数据（员工数量、电脑数量、统计等）回答"是"，闲聊回答"否"。只回答一个字。
+以下类型的问题必须回答"是"（需要查询数据库）：
+- 列出、查找、查询、搜索任何人员、部门、电脑等信息
+- 统计数量（多少人、多少台电脑等）
+- 查询某个人的信息（电话、部门、职位、住址、地址等）
+- 查询某个部门的员工列表
+- 涉及工号、IP地址、资产编号等具体数据
+- 任何关于"经理"、"主管"、"工程师"等职位的人员查询
+- 查询某人的家庭住址、现居住地、户籍所在地、身份证地址等地址信息
 
-回答："""
-    
+以下类型回答"否"（普通闲聊）：
+- 问候语（你好、早上好等）
+- 闲聊（今天天气怎么样等）
+- 关于系统本身的使用问题
+
+只回答一个字：是或否。"""
+
     try:
         messages = [
-            {"role": "system", "content": "只回答是或否。"},
+            {"role": "system", "content": "你是一个分类器，只回答是或否。涉及任何人员、部门、电脑、资产数据查询的都回答是。"},
             {"role": "user", "content": prompt}
         ]
         result = call_llm_api_v2(config, messages, timeout=30)
@@ -116,7 +268,7 @@ def check_if_needs_database_query_v2(question, db_schema, config):
         return result.strip() in ['是', 'yes', 'y', 'true', '1']
     except Exception as e:
         logger.error(f"Intent detection error: {str(e)}")
-        return False
+        return True
 
 def generate_sql_v2(question, db_schema, config):
     """参考NocoBase的结构化SQL生成Prompt"""
@@ -167,14 +319,12 @@ def generate_sql_v2(question, db_schema, config):
         content = call_llm_api_v2(config, messages, timeout=180)
         logger.info(f"LLM response for SQL: {content[:500]}...")
         
-        # 尝试多种方式提取SQL
         sql_match = re.search(r'```sql\s*(.*?)\s*```', content, re.DOTALL | re.IGNORECASE)
         if sql_match:
             sql = sql_match.group(1).strip()
             if sql.upper().startswith('SELECT'):
                 return sql
         
-        # 如果没有代码块，尝试直接提取SELECT语句
         sql_match = re.search(r'(SELECT\s+.*?(?:;|$))', content, re.DOTALL | re.IGNORECASE)
         if sql_match:
             sql = sql_match.group(1).strip().rstrip(';')
@@ -191,7 +341,6 @@ def smart_retry_query(question, sql, db_schema, config):
     """当查询结果为0时，智能重试：拆分关键词重新生成SQL"""
     logger.info(f"Smart retry for question: {question}")
     
-    # 让LLM分析问题并生成更好的SQL
     prompt = f"""<task>
 上一次查询返回0条结果，可能是因为部门名称匹配不正确。请重新分析并生成更准确的SQL。
 </task>
@@ -245,7 +394,17 @@ def smart_retry_query(question, sql, db_schema, config):
         return None
 
 def execute_sql(sql):
-    """执行SQL并返回结果"""
+    """执行SQL并返回结果（仅限只读查询）"""
+    sql_upper = sql.strip().upper()
+    if not sql_upper.startswith('SELECT') and not sql_upper.startswith('SHOW') and not sql_upper.startswith('DESCRIBE') and not sql_upper.startswith('EXPLAIN'):
+        return None, "仅允许执行 SELECT/SHOW/DESCRIBE 只读查询"
+    
+    dangerous = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'CREATE', 'TRUNCATE', 'GRANT', 'REVOKE',
+                 'REPLACE', 'RENAME', 'LOAD', 'INTO OUTFILE', 'INTO DUMPFILE', 'LOCK', 'UNLOCK']
+    for keyword in dangerous:
+        if re.search(r'\b' + keyword + r'\b', sql_upper):
+            return None, f"禁止执行 {keyword} 操作，仅允许 SELECT/SHOW/DESCRIBE 只读查询"
+    
     try:
         logger.info(f"Executing SQL: {sql}")
         result = db.session.execute(db.text(sql))
@@ -256,7 +415,6 @@ def execute_sql(sql):
     except Exception as e:
         error_msg = str(e)
         logger.error(f"SQL execution error: {error_msg}")
-        logger.error(f"Failed SQL was: {sql}")
         return None, error_msg
 
 def fix_sql_with_error(sql, error_msg, question, db_schema, config):
@@ -315,9 +473,7 @@ def fix_sql_with_error(sql, error_msg, question, db_schema, config):
         return None
 
 def generate_answer_with_data_v2(question, db_schema, sql, data, config):
-    """根据查询结果生成回答，当有多条记录时提供详细信息帮助区分"""
-    
-    # 检查是否是查询特定人员信息（多条记录需要区分）
+    """根据查询结果生成回答（非流式）"""
     if len(data) > 1 and any('emp_name' in row or 'emp_id' in row for row in data):
         prompt = f"""根据查询结果回答用户问题。
 
@@ -340,7 +496,6 @@ def generate_answer_with_data_v2(question, db_schema, sql, data, config):
 
 提示：以上记录中X条为在职，Y条为已离职。"""
     elif len(data) == 1:
-        # 单条记录也用表格展示
         prompt = f"""根据查询结果回答用户问题。
 
 问题：{question}
@@ -365,17 +520,84 @@ def generate_answer_with_data_v2(question, db_schema, sql, data, config):
     except Exception as e:
         return f"生成回答出错: {str(e)}"
 
+
+def generate_answer_messages(question, db_schema, sql, data):
+    """构造用于流式生成回答的messages列表"""
+    if len(data) > 1 and any('emp_name' in row or 'emp_id' in row for row in data):
+        prompt = f"""根据查询结果回答用户问题。
+
+问题：{question}
+查询结果：共{len(data)}条记录
+{json.dumps(data[:10], ensure_ascii=False, indent=2)}
+
+重要提示：
+1. 查询到多条记录，可能是同名人员
+2. **必须使用Markdown表格格式**展示每个人的信息
+3. 表格列应包括：工号、姓名、部门、状态、电话等可用字段
+4. 如果有在职和离职的区别，在表格后添加提示说明
+5. 不要遗漏任何人
+
+输出格式示例：
+| 工号 | 姓名 | 部门 | 状态 | 电话 |
+|------|------|------|------|------|
+| 001 | 张三 | 人力资源部 | 在职 | 138xxxx |
+| 002 | 张三 | 财务部 | 离职 | 139xxxx |
+
+提示：以上记录中X条为在职，Y条为已离职。"""
+    elif len(data) == 1:
+        prompt = f"""根据查询结果回答用户问题。
+
+问题：{question}
+查询结果：
+{json.dumps(data[0], ensure_ascii=False, indent=2)}
+
+请用Markdown表格格式展示这条记录的信息。"""
+    else:
+        prompt = f"""根据查询结果回答。
+
+问题：{question}
+结果（{len(data)}条）：{data[:10]}
+
+用中文简洁回答，如果是统计数据直接给出数字，如果是列表数据用Markdown表格展示。"""
+    
+    return [
+        {"role": "system", "content": "你是数据分析师，请清晰、准确地展示查询结果。重要：多条记录必须用Markdown表格格式展示。"},
+        {"role": "user", "content": prompt}
+    ]
+
+
 def direct_answer_v2(question, config):
-    prompt = f"""你是AI助手。问题：{question}。简洁回答。"""
+    prompt = question
     
     try:
         messages = [
-            {"role": "system", "content": "你是友好的AI助手。"},
+            {"role": "system", "content": "你是友好的AI助手，请根据用户的问题给出完整、详细的回答。如果用户要求写长文，请完整输出，不要截断。"},
             {"role": "user", "content": prompt}
         ]
         return call_llm_api_v2(config, messages, timeout=60)
     except Exception as e:
         return f"生成回答出错: {str(e)}"
+
+
+def direct_answer_messages(question):
+    """构造用于流式直接回答的messages列表"""
+    return [
+        {"role": "system", "content": "你是友好的AI助手，请根据用户的问题给出完整、详细的回答。如果用户要求写长文，请完整输出，不要截断。"},
+        {"role": "user", "content": question}
+    ]
+
+
+def get_ai_config():
+    """获取AI配置（用于异步任务中不依赖current_app）"""
+    return {
+        'provider': 'ollama',
+        'api_key': '',
+        'model': 'llama3',
+        'ollama_api_base': 'http://localhost:11434/v1',
+        'openai_api_base': 'https://api.openai.com/v1',
+        'minimax_api_key': ''
+    }
+
 
 def get_database_schema():
     """参考NocoBase做法：详细的数据库Schema描述 + Few-shot示例"""
@@ -405,6 +627,9 @@ def get_database_schema():
 - phone_number: 电话号码
 - emergency_contact_name: 紧急联系人姓名
 - emergency_contact_phone: 紧急联系人电话
+- current_residence: 现居住地/家庭住址 (如 '广东省佛山市南海区狮山镇...')
+- registered_residence: 户籍所在地 (如 '广东省佛山市南海区')
+- id_address: 身份证地址 (如 '广东省佛山市南海区狮山镇...')
 - highest_education: 最高学历
 - school: 毕业院校
 
@@ -489,6 +714,15 @@ SQL: SELECT emp_id, emp_name, emergency_contact_name, emergency_contact_phone, d
 问题: 刘航的紧急联系人是谁
 SQL: SELECT emp_id, emp_name, emergency_contact_name, emergency_contact_phone, dept_full_name, emp_status FROM employees_info WHERE emp_name = '刘航'
 
+问题: 查询张三的家庭住址
+SQL: SELECT emp_id, emp_name, current_residence, registered_residence, id_address, dept_full_name, emp_status FROM employees_info WHERE emp_name = '张三'
+
+问题: 覃家明的住址是什么
+SQL: SELECT emp_id, emp_name, current_residence as 现居住地, registered_residence as 户籍所在地, id_address as 身份证地址, dept_full_name, emp_status FROM employees_info WHERE emp_name = '覃家明'
+
+问题: 查询张三的身份证地址
+SQL: SELECT emp_id, emp_name, id_address, dept_full_name, emp_status FROM employees_info WHERE emp_name = '张三'
+
 ## 电脑信息相关示例
 
 问题: 有多少台电脑？
@@ -569,7 +803,7 @@ def chat():
         response_text = ""
         sql_query = None
         query_result = None
-        thinking_steps = []  # 思考过程
+        thinking_steps = []
         
         thinking_steps.append({
             'step': '意图识别',
@@ -596,7 +830,6 @@ def chat():
                 
                 query_result, sql_error = execute_sql(sql_query)
                 
-                # SQL执行失败，尝试修复
                 if sql_error and query_result is None:
                     thinking_steps.append({
                         'step': '修复SQL',
@@ -611,7 +844,6 @@ def chat():
                             thinking_steps[-1]['status'] = 'completed'
                             thinking_steps[-1]['result'] = 'SQL修复成功'
                 
-                # 结果为0，尝试智能重试
                 if query_result is not None and len(query_result) == 0:
                     thinking_steps.append({
                         'step': '智能重试',
@@ -667,16 +899,11 @@ def chat():
 @bp.route('/api/ai/query/stream', methods=['POST'])
 @login_required
 def ai_query_stream():
-    """真正的流式API - 每个步骤实时执行并返回"""
-    logger.info("=== AI Query Stream API Called ===")
-    
-    # 从请求中获取数据
+    """流式API - 支持两种模式：query(数据问答) / chat(一般对话)"""
     data = request.get_json()
     question = data.get('question', '').strip()
-    provider = data.get('provider', '').strip()
-    
-    if not provider:
-        provider = current_app.config.get('AI_PROVIDER', 'ollama')
+    mode = data.get('mode', 'query')
+    provider = data.get('provider', '') or current_app.config.get('AI_PROVIDER', 'ollama')
     
     config = {
         'provider': provider,
@@ -687,113 +914,97 @@ def ai_query_stream():
         'minimax_api_key': current_app.config.get('MINIMAX_API_KEY', '')
     }
     
-    # 获取当前应用实例，用于在生成器中推送上下文
     app_instance = current_app._get_current_object()
     
     def generate():
-        # 在生成器中推送应用上下文
         with app_instance.app_context():
             try:
                 if not question:
-                    yield f"data: {json.dumps({'error': '请输入问题'}, ensure_ascii=False)}\n\n"
+                    yield "data: " + json.dumps({'error': '请输入问题'}, ensure_ascii=False) + "\n\n"
+                    return
+                
+                if mode == 'chat':
+                    yield "data: " + json.dumps({'step': {'step': 1, 'action': '\u751f\u6210\u56de\u7b54', 'status': 'processing'}}, ensure_ascii=False) + "\n\n"
+                    chat_prompt = [{'role': 'system', 'content': '\u4f60\u662f\u4e00\u4e2a\u53cb\u597d\u7684AI\u52a9\u624b\uff0c\u8bf7\u7528\u4e2d\u6587\u56de\u7b54\u7528\u6237\u7684\u95ee\u9898\u3002'}, {'role': 'user', 'content': question}]
+                    full_content = ''
+                    for chunk in call_llm_api_stream(config, chat_prompt, timeout=120):
+                        if chunk['type'] == 'content':
+                            full_content += chunk['content']
+                            yield "data: " + json.dumps({'content': chunk['content']}, ensure_ascii=False) + "\n\n"
+                    yield "data: " + json.dumps({'step': {'step': 1, 'action': '\u751f\u6210\u56de\u7b54', 'status': 'completed'}}, ensure_ascii=False) + "\n\n"
+                    yield "data: " + json.dumps({'done': True}, ensure_ascii=False) + "\n\n"
                     return
                 
                 db_schema = get_database_schema()
                 
-                # 步骤1: 意图识别 - 先返回processing状态
-                yield f"data: {json.dumps({'step': {'step': 1, 'action': '意图识别', 'status': 'processing'}}, ensure_ascii=False)}\n\n"
+                yield "data: " + json.dumps({'step': {'step': 1, 'action': '\u751f\u6210SQL', 'status': 'processing'}}, ensure_ascii=False) + "\n\n"
+                sql_query = generate_sql_v2(question, db_schema, config)
                 
-                # 执行意图识别
-                need_query = check_if_needs_database_query_v2(question, db_schema, config)
-                logger.info(f"Intent detection result: {need_query}")
-                
-                # 返回completed状态
-                yield f"data: {json.dumps({'step': {'step': 1, 'action': '意图识别', 'status': 'completed', 'result': '需要查询数据库' if need_query else '普通对话'}}, ensure_ascii=False)}\n\n"
-                
-                if need_query:
-                    # 步骤2: 生成SQL
-                    yield f"data: {json.dumps({'step': {'step': 2, 'action': '生成SQL', 'status': 'processing'}}, ensure_ascii=False)}\n\n"
-                    
-                    sql_query = generate_sql_v2(question, db_schema, config)
-                    
-                    if sql_query:
-                        yield f"data: {json.dumps({'step': {'step': 2, 'action': '生成SQL', 'status': 'completed', 'result': sql_query}, 'sql': sql_query}, ensure_ascii=False)}\n\n"
-                        
-                        # 步骤3: 执行查询
-                        yield f"data: {json.dumps({'step': {'step': 3, 'action': '执行查询', 'status': 'processing'}}, ensure_ascii=False)}\n\n"
-                        
-                        query_result, sql_error = execute_sql(sql_query)
-                        
-                        # SQL执行失败，尝试修复
-                        step_num = 3
-                        if sql_error and query_result is None:
-                            step_num = 4
-                            yield f"data: {json.dumps({'step': {'step': step_num, 'action': '修复SQL', 'status': 'processing', 'detail': str(sql_error)[:50]}}, ensure_ascii=False)}\n\n"
-                            
-                            fixed_sql = fix_sql_with_error(sql_query, sql_error, question, db_schema, config)
-                            if fixed_sql:
-                                sql_query = fixed_sql
-                                query_result, sql_error = execute_sql(sql_query)
-                                if query_result:
-                                    yield f"data: {json.dumps({'step': {'step': step_num, 'action': '修复SQL', 'status': 'completed', 'result': '修复成功'}}, ensure_ascii=False)}\n\n"
-                        
-                        # 结果为0，尝试智能重试
-                        if query_result is not None and len(query_result) == 0:
-                            step_num = 5
-                            yield f"data: {json.dumps({'step': {'step': step_num, 'action': '智能重试', 'status': 'processing', 'detail': '结果为0，尝试更宽松匹配'}}, ensure_ascii=False)}\n\n"
-                            
-                            retry_sql = smart_retry_query(question, sql_query, db_schema, config)
-                            if retry_sql:
-                                sql_query = retry_sql
-                                query_result, _ = execute_sql(sql_query)
-                                if query_result and len(query_result) > 0:
-                                    yield f"data: {json.dumps({'step': {'step': step_num, 'action': '智能重试', 'status': 'completed', 'result': f'找到{len(query_result)}条记录'}}, ensure_ascii=False)}\n\n"
-                        
-                        if query_result is not None:
-                            cnt = len(query_result)
-                            yield f"data: {json.dumps({'step': {'step': 3, 'action': '执行查询', 'status': 'completed', 'result': f'获取{cnt}条记录'}}, ensure_ascii=False)}\n\n"
-                            
-                            # 生成回答
-                            yield f"data: {json.dumps({'step': {'step': 6, 'action': '生成回答', 'status': 'processing'}}, ensure_ascii=False)}\n\n"
-                            
-                            answer = generate_answer_with_data_v2(question, db_schema, sql_query, query_result, config)
-                            
-                            yield f"data: {json.dumps({'step': {'step': 6, 'action': '生成回答', 'status': 'completed'}}, ensure_ascii=False)}\n\n"
-                            
-                            # 流式输出回答
-                            for char in answer:
-                                yield f"data: {json.dumps({'content': char}, ensure_ascii=False)}\n\n"
-                            
-                            yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
-                        else:
-                            error_detail = sql_error[:100] if sql_error else '未知错误'
-                            logger.error(f"Query failed with error: {error_detail}")
-                            yield f"data: {json.dumps({'step': {'step': 3, 'action': '执行查询', 'status': 'error', 'result': f'查询失败: {error_detail}'}}, ensure_ascii=False)}\n\n"
-                            answer = f"抱歉，查询数据时出错。错误信息: {error_detail}。请尝试换一种方式提问。"
-                            for char in answer:
-                                yield f"data: {json.dumps({'content': char}, ensure_ascii=False)}\n\n"
-                            yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
-                    else:
-                        yield f"data: {json.dumps({'step': {'step': 2, 'action': '生成SQL', 'status': 'error', 'result': '无法生成SQL'}}, ensure_ascii=False)}\n\n"
-                        answer = "抱歉，无法生成查询语句。请换一种方式提问。"
-                        for char in answer:
-                            yield f"data: {json.dumps({'content': char}, ensure_ascii=False)}\n\n"
-                        yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
-                else:
-                    yield f"data: {json.dumps({'step': {'step': 2, 'action': '生成回答', 'status': 'processing'}}, ensure_ascii=False)}\n\n"
-                    answer = direct_answer_v2(question, config)
-                    yield f"data: {json.dumps({'step': {'step': 2, 'action': '生成回答', 'status': 'completed'}}, ensure_ascii=False)}\n\n"
+                if not sql_query:
+                    yield "data: " + json.dumps({'step': {'step': 1, 'action': '\u751f\u6210SQL', 'status': 'error', 'result': '\u65e0\u6cd5\u751f\u6210SQL'}}, ensure_ascii=False) + "\n\n"
+                    answer = '\u62b1\u6b49\uff0c\u65e0\u6cd5\u7406\u89e3\u60a8\u7684\u67e5\u8be2\u610f\u56fe\u3002\u8bf7\u6362\u4e00\u79cd\u65b9\u5f0f\u63cf\u8ff0\u60a8\u8981\u67e5\u4ec0\u4e48\u6570\u636e\u3002'
                     for char in answer:
-                        yield f"data: {json.dumps({'content': char}, ensure_ascii=False)}\n\n"
-                    yield f"data: {json.dumps({'done': True}, ensure_ascii=False)}\n\n"
+                        yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + "\n\n"
+                    yield "data: " + json.dumps({'done': True}, ensure_ascii=False) + "\n\n"
+                    return
+                
+                yield "data: " + json.dumps({'step': {'step': 1, 'action': '\u751f\u6210SQL', 'status': 'completed', 'result': sql_query}, 'sql': sql_query}, ensure_ascii=False) + "\n\n"
+                
+                yield "data: " + json.dumps({'step': {'step': 2, 'action': '\u6267\u884c\u67e5\u8be2', 'status': 'processing'}}, ensure_ascii=False) + "\n\n"
+                query_result, sql_error = execute_sql(sql_query)
+                
+                if sql_error and query_result is None:
+                    yield "data: " + json.dumps({'step': {'step': 3, 'action': '\u4fee\u590dSQL', 'status': 'processing', 'detail': str(sql_error)[:50]}}, ensure_ascii=False) + "\n\n"
+                    fixed_sql = fix_sql_with_error(sql_query, sql_error, question, db_schema, config)
+                    if fixed_sql:
+                        sql_query = fixed_sql
+                        query_result, sql_error = execute_sql(sql_query)
+                        if query_result:
+                            yield "data: " + json.dumps({'step': {'step': 3, 'action': '\u4fee\u590dSQL', 'status': 'completed', 'result': '\u4fee\u590d\u6210\u529f'}}, ensure_ascii=False) + "\n\n"
+                
+                if query_result is not None and len(query_result) == 0:
+                    yield "data: " + json.dumps({'step': {'step': 4, 'action': '\u667a\u80fd\u91cd\u8bd5', 'status': 'processing', 'detail': '\u7ed3\u679c\u4e3a0\uff0c\u5c1d\u8bd5\u66f4\u5bbd\u677e\u5339\u914d'}}, ensure_ascii=False) + "\n\n"
+                    retry_sql = smart_retry_query(question, sql_query, db_schema, config)
+                    if retry_sql:
+                        sql_query = retry_sql
+                        query_result, _ = execute_sql(sql_query)
+                        if query_result and len(query_result) > 0:
+                            yield "data: " + json.dumps({'step': {'step': 4, 'action': '\u667a\u80fd\u91cd\u8bd5', 'status': 'completed', 'result': '\u627e\u5230' + str(len(query_result)) + '\u6761\u8bb0\u5f55'}}, ensure_ascii=False) + "\n\n"
+                
+                if query_result is not None:
+                    cnt = len(query_result)
+                    yield "data: " + json.dumps({'step': {'step': 2, 'action': '\u6267\u884c\u67e5\u8be2', 'status': 'completed', 'result': '\u83b7\u53d6' + str(cnt) + '\u6761\u8bb0\u5f55'}}, ensure_ascii=False) + "\n\n"
+                    
+                    yield "data: " + json.dumps({'step': {'step': 5, 'action': '\u751f\u6210\u56de\u7b54', 'status': 'processing'}}, ensure_ascii=False) + "\n\n"
+                    messages = generate_answer_messages(question, db_schema, sql_query, query_result)
+                    full_content = ''
+                    for chunk in call_llm_api_stream(config, messages, timeout=120):
+                        if chunk['type'] == 'content':
+                            full_content += chunk['content']
+                            yield "data: " + json.dumps({'content': chunk['content']}, ensure_ascii=False) + "\n\n"
+                    
+                    if not full_content:
+                        answer = generate_answer_with_data_v2(question, db_schema, sql_query, query_result, config)
+                        for char in answer:
+                            yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + "\n\n"
+                    
+                    yield "data: " + json.dumps({'step': {'step': 5, 'action': '\u751f\u6210\u56de\u7b54', 'status': 'completed'}}, ensure_ascii=False) + "\n\n"
+                    yield "data: " + json.dumps({'done': True}, ensure_ascii=False) + "\n\n"
+                else:
+                    error_detail = sql_error[:100] if sql_error else '\u672a\u77e5\u9519\u8bef'
+                    yield "data: " + json.dumps({'step': {'step': 2, 'action': '\u6267\u884c\u67e5\u8be2', 'status': 'error', 'result': '\u67e5\u8be2\u5931\u8d25: ' + error_detail}}, ensure_ascii=False) + "\n\n"
+                    answer = '\u62b1\u6b49\uff0c\u67e5\u8be2\u6570\u636e\u65f6\u51fa\u9519\u3002\u8bf7\u5c1d\u8bd5\u6362\u4e00\u79cd\u65b9\u5f0f\u63d0\u95ee\u3002'
+                    for char in answer:
+                        yield "data: " + json.dumps({'content': char}, ensure_ascii=False) + "\n\n"
+                    yield "data: " + json.dumps({'done': True}, ensure_ascii=False) + "\n\n"
+            
             except Exception as e:
                 logger.error(f"Stream error: {str(e)}")
-                yield f"data: {json.dumps({'error': str(e)}, ensure_ascii=False)}\n\n"
+                yield "data: " + json.dumps({'error': str(e)}, ensure_ascii=False) + "\n\n"
     
-    return Response(generate(), mimetype='text/event-stream', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
+    return Response(generate(), content_type='text/event-stream; charset=utf-8', headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
-# ==================== 外部API接口 ====================
 
 @bp.route('/api/v1/query', methods=['POST'])
 @api_key_required
@@ -830,7 +1041,6 @@ def api_query():
                 'error': '请提供question参数'
             }), 400
         
-        # 获取配置
         provider = current_app.config.get('AI_PROVIDER', 'ollama')
         
         config = {
@@ -843,8 +1053,6 @@ def api_query():
         }
         
         db_schema = get_database_schema()
-        
-        # 意图识别
         need_query = check_if_needs_database_query_v2(question, db_schema, config)
         
         thinking_steps = [{
@@ -858,7 +1066,6 @@ def api_query():
         answer = ""
         
         if need_query:
-            # 生成SQL
             thinking_steps.append({'step': '生成SQL', 'status': 'processing'})
             sql_query = generate_sql_v2(question, db_schema, config)
             
@@ -866,11 +1073,9 @@ def api_query():
                 thinking_steps[-1]['status'] = 'completed'
                 thinking_steps[-1]['result'] = sql_query
                 
-                # 执行查询
                 thinking_steps.append({'step': '执行查询', 'status': 'processing'})
                 query_result, sql_error = execute_sql(sql_query)
                 
-                # SQL执行失败，尝试修复
                 if sql_error and query_result is None:
                     thinking_steps.append({
                         'step': '修复SQL',
@@ -885,7 +1090,6 @@ def api_query():
                             thinking_steps[-1]['status'] = 'completed'
                             thinking_steps[-1]['result'] = 'SQL修复成功'
                 
-                # 结果为0，尝试智能重试
                 if query_result is not None and len(query_result) == 0:
                     thinking_steps.append({
                         'step': '智能重试',
@@ -904,7 +1108,6 @@ def api_query():
                     thinking_steps[-2]['status'] = 'completed'
                     thinking_steps[-2]['result'] = f'获取到 {len(query_result)} 条记录'
                     
-                    # 生成回答
                     thinking_steps.append({'step': '生成回答', 'status': 'completed'})
                     answer = generate_answer_with_data_v2(question, db_schema, sql_query, query_result, config)
                 else:
@@ -942,21 +1145,6 @@ def api_query():
 def api_query_raw():
     """
     外部API接口 - 仅返回原始数据（不生成自然语言回答）
-    
-    请求示例:
-    curl -X POST http://localhost:5000/api/v1/query/raw \
-         -H "Content-Type: application/json" \
-         -H "X-API-Key: asset-ai-api-key-2024" \
-         -d '{"question": "在职员工有多少人"}'
-    
-    返回格式:
-    {
-        "success": true,
-        "question": "在职员工有多少人",
-        "sql": "SELECT COUNT(*) as total FROM employees_info WHERE emp_status = '在职'",
-        "data": [{"total": 50000}],
-        "data_count": 1
-    }
     """
     logger.info("=== External API Query Raw Called ===")
     
@@ -970,7 +1158,6 @@ def api_query_raw():
                 'error': '请提供question参数'
             }), 400
         
-        # 获取配置
         provider = current_app.config.get('AI_PROVIDER', 'ollama')
         
         config = {
@@ -983,46 +1170,40 @@ def api_query_raw():
         }
         
         db_schema = get_database_schema()
-        
-        # 生成SQL
         sql_query = generate_sql_v2(question, db_schema, config)
         
         if not sql_query:
             return jsonify({
                 'success': False,
                 'error': '无法生成SQL查询语句'
-            }), 400
+            })
         
-        # 执行查询
         query_result, sql_error = execute_sql(sql_query)
         
-        # SQL执行失败，尝试修复
-        if sql_error and query_result is None:
+        if query_result is None:
             fixed_sql = fix_sql_with_error(sql_query, sql_error, question, db_schema, config)
             if fixed_sql:
                 sql_query = fixed_sql
-                query_result, sql_error = execute_sql(sql_query)
-        
-        # 结果为0，尝试智能重试
-        if query_result is not None and len(query_result) == 0:
-            retry_sql = smart_retry_query(question, sql_query, db_schema, config)
-            if retry_sql:
-                sql_query = retry_sql
                 query_result, _ = execute_sql(sql_query)
         
         if query_result is None:
             return jsonify({
                 'success': False,
-                'error': '查询执行失败',
-                'sql': sql_query
-            }), 500
+                'error': f'查询执行失败: {sql_error}'
+            })
+        
+        if len(query_result) == 0:
+            retry_sql = smart_retry_query(question, sql_query, db_schema, config)
+            if retry_sql:
+                sql_query = retry_sql
+                query_result, _ = execute_sql(sql_query)
         
         return jsonify({
             'success': True,
             'question': question,
             'sql': sql_query,
             'data': query_result,
-            'data_count': len(query_result)
+            'data_count': len(query_result) if query_result else 0
         })
         
     except Exception as e:
@@ -1033,87 +1214,141 @@ def api_query_raw():
         }), 500
 
 
-@bp.route('/api/v1/sql', methods=['POST'])
-@api_key_required
-def api_execute_sql():
-    """
-    外部API接口 - 直接执行SQL
-    
-    请求示例:
-    curl -X POST http://localhost:5000/api/v1/sql \
-         -H "Content-Type: application/json" \
-         -H "X-API-Key: asset-ai-api-key-2024" \
-         -d '{"sql": "SELECT COUNT(*) as total FROM employees_info WHERE emp_status = '在职'"}'
-    
-    返回格式:
-    {
-        "success": true,
-        "sql": "SELECT COUNT(*) as total FROM ...",
-        "data": [{"total": 50000}],
-        "data_count": 1
-    }
-    """
-    logger.info("=== External API Execute SQL Called ===")
-    
-    try:
-        data = request.get_json()
-        sql = data.get('sql', '').strip()
-        
-        if not sql:
-            return jsonify({
-                'success': False,
-                'error': '请提供sql参数'
-            }), 400
-        
-        # 安全检查：只允许SELECT语句
-        if not sql.upper().startswith('SELECT'):
-            return jsonify({
-                'success': False,
-                'error': '只允许执行SELECT查询语句'
-            }), 403
-        
-        # 执行查询
-        query_result, sql_error = execute_sql(sql)
-        
-        if query_result is None:
-            return jsonify({
-                'success': False,
-                'error': sql_error or '查询执行失败',
-                'sql': sql
-            }), 500
-        
-        return jsonify({
-            'success': True,
-            'sql': sql,
-            'data': query_result,
-            'data_count': len(query_result)
-        })
-        
-    except Exception as e:
-        logger.error(f"API Execute SQL error: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+@bp.route('/api/ai/sessions', methods=['GET'])
+@login_required
+def get_chat_sessions():
+    """获取用户的对话历史列表"""
+    sessions = ChatSession.query.filter_by(user_id=current_user.id).order_by(ChatSession.updated_at.desc()).limit(20).all()
+    return jsonify([{
+        'id': s.id,
+        'title': s.title,
+        'created_at': s.created_at.strftime('%Y-%m-%d %H:%M'),
+        'message_count': s.messages.count()
+    } for s in sessions])
 
 
-@bp.route('/api/v1/schema', methods=['GET'])
-@api_key_required
-def api_get_schema():
-    """
-    外部API接口 - 获取数据库Schema
+@bp.route('/api/ai/sessions', methods=['POST'])
+@login_required
+def create_chat_session():
+    """创建新对话"""
+    data = request.get_json() or {}
+    session = ChatSession(
+        user_id=current_user.id,
+        title=data.get('title', '新对话')
+    )
+    db.session.add(session)
+    db.session.commit()
+    return jsonify({'success': True, 'id': session.id})
+
+
+@bp.route('/api/ai/sessions/<int:session_id>/messages', methods=['GET'])
+@login_required
+def get_chat_messages(session_id):
+    """获取对话的消息列表"""
+    messages = ChatMessage.query.filter_by(session_id=session_id).order_by(ChatMessage.created_at).all()
+    return jsonify([{
+        'id': m.id,
+        'role': m.role,
+        'content': m.content,
+        'has_sql': m.has_sql,
+        'sql_query': m.sql_query,
+        'created_at': m.created_at.strftime('%H:%M')
+    } for m in messages])
+
+
+@bp.route('/api/ai/messages', methods=['POST'])
+@login_required
+def save_chat_message():
+    """保存一条消息"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'no data'}), 400
     
-    请求示例:
-    curl -X GET http://localhost:5000/api/v1/schema \
-         -H "X-API-Key: asset-ai-api-key-2024"
+    session_id = data.get('session_id')
+    role = data.get('role')
+    content = data.get('content', '')
     
-    返回格式:
-    {
-        "success": true,
-        "schema": "数据库schema描述..."
-    }
-    """
-    return jsonify({
-        'success': True,
-        'schema': get_database_schema()
-    })
+    # 如果没有session_id，创建新会话
+    if not session_id:
+        session = ChatSession(user_id=current_user.id)
+        db.session.add(session)
+        db.session.flush()
+        session_id = session.id
+    
+    message = ChatMessage(
+        session_id=session_id,
+        role=role,
+        content=content,
+        has_sql=data.get('has_sql', False),
+        sql_query=data.get('sql_query'),
+        has_result=data.get('has_result', False),
+        result_summary=data.get('result_summary')
+    )
+    db.session.add(message)
+    
+    # 更新会话标题（从第一条用户消息提取）
+    session = ChatSession.query.get(session_id)
+    if session and session.title == '新对话' and role == 'user' and len(content) > 2:
+        session.title = content[:30] + ('...' if len(content) > 30 else '')
+    if session:
+        session.updated_at = datetime.utcnow()
+    
+    db.session.commit()
+    return jsonify({'success': True, 'session_id': session_id, 'message_id': message.id})
+
+
+@bp.route('/api/ai/messages/batch', methods=['POST'])
+@login_required
+def save_chat_messages_batch():
+    """批量保存消息（用于页面关闭前保存所有消息）"""
+    data = request.get_json()
+    if not data or 'messages' not in data:
+        return jsonify({'success': False, 'error': 'no messages'}), 400
+    
+    session_id = data.get('session_id')
+    messages = data['messages']
+    
+    # 创建或获取会话
+    if not session_id:
+        session = ChatSession(user_id=current_user.id)
+        title = ''
+        for msg in messages:
+            if msg.get('role') == 'user' and len(msg.get('content', '')) > 2:
+                title = msg['content'][:30]
+                break
+        session.title = title or '新对话'
+        db.session.add(session)
+        db.session.flush()
+        session_id = session.id
+        session.updated_at = datetime.utcnow()
+    else:
+        session = ChatSession.query.get(session_id)
+        if session:
+            if session.title == '新对话':
+                for msg in messages:
+                    if msg.get('role') == 'user' and len(msg.get('content', '')) > 2:
+                        session.title = msg['content'][:30]
+                        break
+            session.updated_at = datetime.utcnow()
+    
+    # 只保存还没有保存的消息（通过内容+角色去重）
+    existing = set()
+    if session_id:
+        for m in ChatMessage.query.filter_by(session_id=session_id).all():
+            existing.add((m.role, m.content[:100]))
+    
+    for msg in messages:
+        key = (msg.get('role', ''), msg.get('content', '')[:100])
+        if key not in existing:
+            chat_msg = ChatMessage(
+                session_id=session_id,
+                role=msg.get('role', ''),
+                content=msg.get('content', ''),
+                has_sql=msg.get('has_sql', False),
+                sql_query=msg.get('sql_query'),
+            )
+            db.session.add(chat_msg)
+            existing.add(key)
+    
+    db.session.commit()
+    return jsonify({'success': True, 'session_id': session_id})

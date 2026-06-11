@@ -17,6 +17,9 @@ ENV/
 .env.*
 !.env.example
 
+# 持久化密钥文件（CSRF/Session用，不上传）
+.secret_key
+
 # 数据库
 *.db
 *.sqlite

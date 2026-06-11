@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}编辑预案{% else %}新增预案{% endif %} - 应急管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-file-earmark-medical"></i> {% if item %}编辑预案{% else %}新增预案{% endif %}</h1>
+</div>
+<div class="mi-card"><div class="mi-card-body">
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+            <div class="mi-form-group"><label class="mi-label">预案编号 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="plan_no" value="{{ item.plan_no if item else '' }}" class="mi-input" required placeholder="如: EP-2026-001"></div>
+            <div class="mi-form-group"><label class="mi-label">预案名称 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="plan_title" value="{{ item.plan_title if item else '' }}" class="mi-input" required></div>
+            <div class="mi-form-group"><label class="mi-label">预案类型</label>
+                <select name="plan_type" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for t in ['信息安全','网络攻击','数据泄露','自然灾害','设备故障','其他'] %}<option value="{{ t }}" {% if item and item.plan_type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">预案等级</label>
+                <select name="plan_level" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for l in ['一级','二级','三级','四级'] %}<option value="{{ l }}" {% if item and item.plan_level==l %}selected{% endif %}>{{ l }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">责任部门</label>
+                <input type="text" name="dept_name" value="{{ item.dept_name if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">责任人</label>
+                <input type="text" name="responsible_person" value="{{ item.responsible_person if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">版本号</label>
+                <input type="text" name="version" value="{{ item.version if item else '1.0' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">状态</label>
+                <select name="status" class="mi-input mi-select">
+                    {% for s in [('draft','草稿'),('published','已发布'),('archived','已归档')] %}<option value="{{ s[0] }}" {% if item and item.status==s[0] %}selected{% endif %}>{{ s[1] }}</option>{% endfor %}
+                </select></div>
+        </div>
+        <div class="mi-form-group"><label class="mi-label">适用范围</label>
+            <textarea name="applicable_scope" class="mi-input mi-textarea" rows="2">{{ item.applicable_scope if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">启动条件</label>
+            <textarea name="trigger_conditions" class="mi-input mi-textarea" rows="3">{{ item.trigger_conditions if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">响应流程</label>
+            <textarea name="response_procedures" class="mi-input mi-textarea" rows="4">{{ item.response_procedures if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">资源需求</label>
+            <textarea name="resource_requirements" class="mi-input mi-textarea" rows="2">{{ item.resource_requirements if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">通讯计划</label>
+            <textarea name="communication_plan" class="mi-input mi-textarea" rows="2">{{ item.communication_plan if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">恢复流程</label>
+            <textarea name="recovery_procedures" class="mi-input mi-textarea" rows="3">{{ item.recovery_procedures if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">备注</label>
+            <textarea name="remark" class="mi-input mi-textarea" rows="2">{{ item.remark if item else '' }}</textarea></div>
+        <div style="display:flex;gap:12px;padding-top:16px;border-top:1px solid var(--border-light)">
+            <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 保存</button>
+            <a href="{{ url_for('emergency.plans') }}" class="mi-btn mi-btn-default"><i class="bi bi-x-lg"></i> 取消</a>
+        </div>
+    </form>
+</div></div>
+{% endblock %}

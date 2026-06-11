@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}应急预案 - 应急管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-file-earmark-medical"></i> 应急预案</h1>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('emergency.plan_add') }}" class="mi-btn mi-btn-primary"><i class="bi bi-plus-lg"></i> 新增预案</a>
+        <a href="{{ url_for('emergency.plan_export') }}" class="mi-btn mi-btn-default"><i class="bi bi-download"></i> 导出</a>
+    </div>
+</div>
+<div class="mi-card"><div class="mi-card-body">
+    <form method="get" class="mi-toolbar">
+        <div class="mi-search"><i class="bi bi-search"></i><input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索编号/名称/部门..." class="mi-input"></div>
+        <select name="plan_type" class="mi-input mi-select" style="width:140px">
+            <option value="">全部类型</option>
+            {% for t in ['信息安全','网络攻击','数据泄露','自然灾害','设备故障','其他'] %}<option value="{{ t }}" {% if plan_type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+        </select>
+        <select name="status" class="mi-input mi-select" style="width:120px">
+            <option value="">全部状态</option>
+            <option value="draft" {% if status=='draft' %}selected{% endif %}>草稿</option>
+            <option value="published" {% if status=='published' %}selected{% endif %}>已发布</option>
+            <option value="archived" {% if status=='archived' %}selected{% endif %}>已归档</option>
+        </select>
+        <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-search"></i> 查询</button>
+        <a href="{{ url_for('emergency.plans') }}" class="mi-btn mi-btn-default">重置</a>
+    </form>
+    <div class="mi-table-wrap"><table class="mi-table"><thead><tr>
+        <th>预案编号</th><th>预案名称</th><th>类型</th><th>等级</th><th>责任部门</th><th>责任人</th><th>版本</th><th>状态</th><th>操作</th>
+    </tr></thead><tbody>
+    {% for item in items %}
+    <tr>
+        <td>{{ item.plan_no }}</td><td>{{ item.plan_title }}</td>
+        <td><span class="mi-badge mi-badge-info">{{ item.plan_type or '-' }}</span></td>
+        <td>{% if item.plan_level=='一级' %}<span class="mi-badge mi-badge-danger">{{ item.plan_level }}</span>{% elif item.plan_level=='二级' %}<span class="mi-badge mi-badge-warning">{{ item.plan_level }}</span>{% else %}<span class="mi-badge mi-badge-default">{{ item.plan_level or '-' }}</span>{% endif %}</td>
+        <td>{{ item.dept_name or '-' }}</td><td>{{ item.responsible_person or '-' }}</td>
+        <td>{{ item.version or '-' }}</td>
+        <td>{% if item.status=='published' %}<span class="mi-badge mi-badge-success">已发布</span>{% elif item.status=='archived' %}<span class="mi-badge mi-badge-default">已归档</span>{% else %}<span class="mi-badge mi-badge-warning">草稿</span>{% endif %}</td>
+        <td>
+            <a href="{{ url_for('emergency.plan_edit', id=item.id) }}" class="mi-btn mi-btn-ghost mi-btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+            <form method="post" action="{{ url_for('emergency.plan_delete', id=item.id) }}" style="display:inline" onsubmit="return confirm('确认删除?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="mi-btn mi-btn-ghost mi-btn-sm" style="color:var(--danger)"><i class="bi bi-trash"></i></button></form>
+        </td>
+    </tr>{% endfor %}
+    {% if not items %}<tr><td colspan="9" style="text-align:center;color:var(--text-hint);padding:40px">暂无数据</td></tr>{% endif %}
+    </tbody></table></div>
+    {% if pagination.pages > 1 %}<div class="mi-pagination">
+        {% if pagination.has_prev %}<a href="{{ url_for('emergency.plans', page=pagination.prev_num, keyword=keyword, plan_type=plan_type, status=status) }}" class="mi-page-link"><i class="bi bi-chevron-left"></i></a>{% endif %}
+        {% for p in pagination.iter_pages() %}{% if p %}<a href="{{ url_for('emergency.plans', page=p, keyword=keyword, plan_type=plan_type, status=status) }}" class="mi-page-link {% if p==pagination.page %}mi-page-active{% endif %}">{{ p }}</a>{% endif %}{% endfor %}
+        {% if pagination.has_next %}<a href="{{ url_for('emergency.plans', page=pagination.next_num, keyword=keyword, plan_type=plan_type, status=status) }}" class="mi-page-link"><i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>{% endif %}
+</div></div>
+{% endblock %}

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>自动登录 - 资产管理系统</title>
+</head>
+<body>
+<p>正在自动登录，请稍候...</p>
+<form id="loginForm" method="POST" action="http://localhost:5001/login">
+<input type="hidden" name="email" value="admin@example.com">
+<input type="hidden" name="password" value="Admin123!">
+<input type="hidden" name="remember" value="y">
+<input type="hidden" name="submit" value="登录">
+</form>
+<script>
+// First fetch the login page to get CSRF token, then submit
+fetch('http://localhost:5001/login', {
+    credentials: 'include'
+})
+.then(response => response.text())
+.then(html => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const csrfInput = doc.querySelector('input[name="csrf_token"]');
+    if (csrfInput) {
+        const csrfToken = csrfInput.value;
+        const form = document.getElementById('loginForm');
+        const csrfField = document.createElement('input');
+        csrfField.type = 'hidden';
+        csrfField.name = 'csrf_token';
+        csrfField.value = csrfToken;
+        form.insertBefore(csrfField, form.firstChild);
+    }
+    form.submit();
+})
+.catch(err => {
+    document.body.innerHTML = '<p style="color:red">自动登录失败，请手动访问 <a href="http://localhost:5001/login">登录页面</a></p><p>错误: ' + err.message + '</p>';
+});
+</script>
+</body>
+</html>

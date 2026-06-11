@@ -1,10 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_file
 from flask_login import login_required, current_user
-from app.decorators import department_permission_required
+from app.decorators import department_permission_required, admin_required
 from app.models import (PermissionMatrix, ClassifiedPersonnel, ClassifiedMedia, 
                         SecurityZone, ElectronicDocument, PaperDocument,
                         SysRole, SysModule, SysPermission, SysUserRole, SysDataPermission,
                         PersonSystemPermissionMatrix)
+from app.decorators import clear_permission_cache
 from app import db
 from datetime import datetime
 import io
@@ -21,8 +22,18 @@ def allowed_file(filename):
     """检查文件扩展名是否允许"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def safe_int(value, default=None):
+    """安全转换为整数，用于dept_id等字段"""
+    if value is None or value == '':
+        return default
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
 @bp.route('/security')
 @login_required
+@admin_required
 def index():
     # 统计数据
     permission_count = SysPermission.query.count()
@@ -56,6 +67,7 @@ def index():
 
 @bp.route('/security/roles')
 @login_required
+@admin_required
 def role_list():
     """角色列表"""
     roles = SysRole.query.order_by(SysRole.sort_order).all()
@@ -63,6 +75,7 @@ def role_list():
 
 @bp.route('/security/roles/add', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def role_add():
     """添加角色"""
     if request.method == 'POST':
@@ -82,6 +95,7 @@ def role_add():
 
 @bp.route('/security/roles/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def role_edit(id):
     """编辑角色"""
     role = SysRole.query.get_or_404(id)
@@ -95,23 +109,37 @@ def role_edit(id):
         return redirect(url_for('security.role_list'))
     return render_template('security/role_form.html', role=role)
 
-@bp.route('/security/roles/delete/<int:id>')
+@bp.route('/security/roles/delete/<int:id>', methods=['POST'])
 @login_required
+@admin_required
 def role_delete(id):
     """删除角色"""
     role = SysRole.query.get_or_404(id)
     if role.role_code == 'super_admin':
         flash('超级管理员角色不能删除！', 'danger')
-    else:
-        db.session.delete(role)
-        db.session.commit()
-        flash('角色删除成功！', 'success')
+        return redirect(url_for('security.role_list'))
+    
+    # 检查是否有用户分配了该角色
+    user_roles = SysUserRole.query.filter_by(role_id=id).all()
+    if user_roles:
+        affected_user_ids = [ur.user_id for ur in user_roles]
+        # 先删除关联关系
+        SysUserRole.query.filter_by(role_id=id).delete()
+        SysDataPermission.query.filter_by(role_id=id).delete()
+        # 清除受影响用户的权限缓存
+        for uid in affected_user_ids:
+            clear_permission_cache(uid)
+    
+    db.session.delete(role)
+    db.session.commit()
+    flash('角色删除成功！', 'success')
     return redirect(url_for('security.role_list'))
 
 # ==================== 模块管理 ====================
 
 @bp.route('/security/modules')
 @login_required
+@admin_required
 def module_list():
     """模块列表"""
     modules = SysModule.query.order_by(SysModule.parent_id, SysModule.sort_order).all()
@@ -119,6 +147,7 @@ def module_list():
 
 @bp.route('/security/modules/add', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def module_add():
     """添加模块"""
     if request.method == 'POST':
@@ -143,6 +172,7 @@ def module_add():
 
 @bp.route('/security/modules/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def module_edit(id):
     """编辑模块"""
     module = SysModule.query.get_or_404(id)
@@ -161,10 +191,70 @@ def module_edit(id):
     parent_modules = SysModule.query.filter_by(parent_id=0, status=1).all()
     return render_template('security/module_form.html', module=module, parent_modules=parent_modules)
 
+@bp.route('/security/permission-matrix')
+@login_required
+@admin_required
+def role_permission_config():
+    """角色权限矩阵配置页面 - 可视化配置每个角色对各模块的增删改查权限"""
+
+    roles = SysRole.query.filter_by(status=1).order_by(SysRole.sort_order).all()
+    modules = SysModule.query.filter_by(status=1).order_by(SysModule.parent_id, SysModule.sort_order).all()
+
+    all_perms = SysPermission.query.all()
+    perm_map = {}
+    for p in all_perms:
+        key = f'{p.role_id}_{p.module_id}'
+        perm_map[key] = {
+            'view': p.can_view, 'add': p.can_add,
+            'edit': p.can_edit, 'delete': p.can_delete,
+            'export': p.can_export, 'import': p.can_import,
+            'audit': p.can_audit, 'approve': p.can_approve
+        }
+
+    return render_template('security/role_permission_config.html',
+                           roles=roles, modules=modules, perm_map=perm_map)
+
+
+@bp.route('/security/permissions/batch_save', methods=['POST'])
+@login_required
+@admin_required
+def permissions_batch_save():
+    """批量保存角色权限配置"""
+
+    data = request.get_json()
+    items = data.get('permissions', [])
+
+    for item in items:
+        role_id = item['role_id']
+        module_id = item['module_id']
+        actions = item['actions']
+
+        perm = SysPermission.query.filter_by(
+            role_id=role_id, module_id=module_id
+        ).first()
+
+        if not perm:
+            perm = SysPermission(role_id=role_id, module_id=module_id)
+            db.session.add(perm)
+
+        if 'view' in actions: perm.can_view = actions['view']
+        if 'add' in actions: perm.can_add = actions['add']
+        if 'edit' in actions: perm.can_edit = actions['edit']
+        if 'delete' in actions: perm.can_delete = actions['delete']
+        if 'export' in actions: perm.can_export = actions['export']
+        if 'import' in actions: perm.can_import = actions['import']
+        if 'audit' in actions: perm.can_audit = actions['audit']
+        if 'approve' in actions: perm.can_approve = actions['approve']
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'已保存 {len(items)} 条权限配置'})
+
+
 # ==================== 权限配置 ====================
 
 @bp.route('/security/permissions')
 @login_required
+@admin_required
 def permission_list():
     """人员权限矩阵 - 员工对公司各业务系统的权限配置"""
     search = request.args.get('search', '').strip()
@@ -233,6 +323,7 @@ def permission_list():
 
 @bp.route('/security/person_permission/edit/<emp_id>')
 @login_required
+@admin_required
 def person_permission_edit(emp_id):
     """编辑单个员工的权限"""
     emp_perms = PersonSystemPermissionMatrix.query.filter_by(emp_id=emp_id).all()
@@ -264,6 +355,7 @@ def person_permission_edit(emp_id):
 
 @bp.route('/security/person_permission/update', methods=['POST'])
 @login_required
+@admin_required
 def person_permission_update():
     """更新人员权限配置"""
     perm_id = request.form.get('id')
@@ -288,16 +380,22 @@ def person_permission_update():
 
 @bp.route('/security/person_permission/save', methods=['POST'])
 @login_required
+@admin_required
 def person_permission_save():
-    """保存员工的所有权限"""
+    """保存员工的所有权限（批量优化版）"""
     emp_id = request.form.get('emp_id')
     emp_name = request.form.get('emp_name')
     dept_id = request.form.get('dept_id') or ''
     dept_name = request.form.get('dept_name') or ''
-    
+
     systems = db.session.query(PersonSystemPermissionMatrix.system_name).distinct().all()
     systems = [s[0] for s in systems]
-    
+
+    existing_map = {}
+    existing_records = PersonSystemPermissionMatrix.query.filter_by(emp_id=emp_id).all()
+    for r in existing_records:
+        existing_map[r.system_name] = r
+
     for system in systems:
         can_view = 1 if request.form.get('can_view_' + system) else 0
         can_add = 1 if request.form.get('can_add_' + system) else 0
@@ -307,11 +405,8 @@ def person_permission_save():
         can_import = 1 if request.form.get('can_import_' + system) else 0
         can_approve = 1 if request.form.get('can_approve_' + system) else 0
         can_config = 1 if request.form.get('can_config_' + system) else 0
-        
-        existing = PersonSystemPermissionMatrix.query.filter_by(
-            emp_id=emp_id, system_name=system
-        ).first()
-        
+
+        existing = existing_map.get(system)
         if existing:
             existing.emp_name = emp_name
             existing.dept_id = dept_id
@@ -327,28 +422,23 @@ def person_permission_save():
         else:
             if can_view or can_add or can_edit or can_delete or can_export or can_import or can_approve or can_config:
                 perm = PersonSystemPermissionMatrix(
-                    emp_id=emp_id,
-                    emp_name=emp_name,
-                    dept_id=dept_id,
-                    dept_name=dept_name,
+                    emp_id=emp_id, emp_name=emp_name,
+                    dept_id=dept_id, dept_name=dept_name,
                     system_name=system,
-                    can_view=can_view,
-                    can_add=can_add,
-                    can_edit=can_edit,
-                    can_delete=can_delete,
-                    can_export=can_export,
-                    can_import=can_import,
-                    can_approve=can_approve,
-                    can_config=can_config,
+                    can_view=can_view, can_add=can_add,
+                    can_edit=can_edit, can_delete=can_delete,
+                    can_export=can_export, can_import=can_import,
+                    can_approve=can_approve, can_config=can_config,
                     permission_level='basic'
                 )
                 db.session.add(perm)
-    
+
     db.session.commit()
     return jsonify({'success': True, 'message': '权限保存成功'})
 
 @bp.route('/security/person_permission/delete', methods=['POST'])
 @login_required
+@admin_required
 def person_permission_delete():
     """删除人员权限配置"""
     perm_id = request.form.get('id')
@@ -364,6 +454,7 @@ def person_permission_delete():
 
 @bp.route('/security/person_permission/list')
 @login_required
+@admin_required
 def person_permission_list():
     """获取权限列表（支持按部门筛选）"""
     dept_filter = request.args.get('dept_id')
@@ -401,6 +492,7 @@ def person_permission_list():
 
 @bp.route('/security/person_permission/batch_update', methods=['POST'])
 @login_required
+@admin_required
 def person_permission_batch_update():
     """批量更新员工权限"""
     emp_id = request.form.get('emp_id')
@@ -434,6 +526,7 @@ def person_permission_batch_update():
 
 @bp.route('/security/permissions/update', methods=['POST'])
 @login_required
+@admin_required
 def permission_update():
     """更新权限"""
     role_id = request.form.get('role_id')
@@ -472,6 +565,7 @@ def permission_update():
 
 @bp.route('/security/permissions/batch', methods=['POST'])
 @login_required
+@admin_required
 def permission_batch():
     """批量设置权限"""
     role_id = request.form.get('role_id')
@@ -501,6 +595,7 @@ def permission_batch():
 
 @bp.route('/security/person_permission_matrix')
 @login_required
+@admin_required
 def person_permission_matrix():
     """人员权限矩阵（按人员-系统维度）"""
     employees = db.session.query(
@@ -539,6 +634,7 @@ def person_permission_matrix():
 
 @bp.route('/security/user_roles')
 @login_required
+@admin_required
 def user_role_list():
     """用户角色列表"""
     from app.models import User
@@ -556,6 +652,7 @@ def user_role_list():
 
 @bp.route('/security/user_roles/assign', methods=['POST'])
 @login_required
+@admin_required
 def user_role_assign():
     """分配用户角色"""
     user_id = request.form.get('user_id')
@@ -574,6 +671,7 @@ def user_role_assign():
 
 @bp.route('/security/user_roles/remove', methods=['POST'])
 @login_required
+@admin_required
 def user_role_remove():
     """移除用户角色"""
     user_id = request.form.get('user_id')
@@ -590,6 +688,7 @@ def user_role_remove():
 
 @bp.route('/security/classified_personnel')
 @login_required
+@admin_required
 def classified_personnel():
     items = ClassifiedPersonnel.query.all()
     return render_template('security/classified_personnel.html', items=items)
@@ -598,6 +697,7 @@ def classified_personnel():
 
 @bp.route('/security/classified_media')
 @login_required
+@admin_required
 def classified_media():
     items = ClassifiedMedia.query.all()
     return render_template('security/classified_media.html', items=items)
@@ -606,6 +706,7 @@ def classified_media():
 
 @bp.route('/security/security_zone')
 @login_required
+@admin_required
 def security_zone():
     items = SecurityZone.query.all()
     return render_template('security/security_zone.html', items=items)
@@ -614,6 +715,7 @@ def security_zone():
 
 @bp.route('/security/electronic_document')
 @login_required
+@admin_required
 def electronic_document():
     items = ElectronicDocument.query.all()
     return render_template('security/electronic_document.html', items=items)
@@ -622,14 +724,432 @@ def electronic_document():
 
 @bp.route('/security/paper_document')
 @login_required
+@admin_required
 def paper_document():
     items = PaperDocument.query.all()
     return render_template('security/paper_document.html', items=items)
+
+# ==================== 涉密人员 CRUD ====================
+
+@bp.route('/security/classified_personnel/add', methods=['POST'])
+@login_required
+@admin_required
+def add_classified_personnel():
+    """添加涉密人员"""
+    try:
+        item = ClassifiedPersonnel(
+            emp_id=request.form.get('emp_id'),
+            emp_name=request.form.get('emp_name'),
+            dept_id=safe_int(request.form.get('dept_id')),
+            dept_name=request.form.get('dept_name'),
+            position=request.form.get('position'),
+            classification_level=request.form.get('classification_level'),
+            training_record=request.form.get('training_record'),
+            agreement_type=request.form.get('agreement_type'),
+            agreement_sign_date=request.form.get('agreement_sign_date') or None,
+            signing_date=request.form.get('signing_date') or None,
+            expiration_date=request.form.get('expiration_date') or None,
+            status=request.form.get('status', '有效'),
+            remark=request.form.get('remark')
+        )
+        db.session.add(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '添加成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/classified_personnel/get/<int:id>')
+@login_required
+@admin_required
+def get_classified_personnel(id):
+    item = ClassifiedPersonnel.query.get_or_404(id)
+    return jsonify({
+        'id': item.id, 'emp_id': item.emp_id, 'emp_name': item.emp_name,
+        'dept_id': item.dept_id, 'dept_name': item.dept_name,
+        'position': item.position, 'classification_level': item.classification_level,
+        'training_record': item.training_record, 'agreement_type': item.agreement_type,
+        'agreement_sign_date': str(item.agreement_sign_date) if item.agreement_sign_date else '',
+        'signing_date': str(item.signing_date) if item.signing_date else '',
+        'expiration_date': str(item.expiration_date) if item.expiration_date else '',
+        'status': item.status, 'remark': item.remark
+    })
+
+@bp.route('/security/classified_personnel/edit/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def edit_classified_personnel(id):
+    item = ClassifiedPersonnel.query.get_or_404(id)
+    try:
+        item.emp_id = request.form.get('emp_id')
+        item.emp_name = request.form.get('emp_name')
+        item.dept_id = safe_int(request.form.get('dept_id'))
+        item.dept_name = request.form.get('dept_name')
+        item.position = request.form.get('position')
+        item.classification_level = request.form.get('classification_level')
+        item.training_record = request.form.get('training_record')
+        item.agreement_type = request.form.get('agreement_type')
+        item.agreement_sign_date = request.form.get('agreement_sign_date') or None
+        item.signing_date = request.form.get('signing_date') or None
+        item.expiration_date = request.form.get('expiration_date') or None
+        item.status = request.form.get('status')
+        item.remark = request.form.get('remark')
+        db.session.commit()
+        return jsonify({'success': True, 'message': '更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/classified_personnel/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_classified_personnel(id):
+    item = ClassifiedPersonnel.query.get_or_404(id)
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+# ==================== 涉密介质 CRUD ====================
+
+@bp.route('/security/classified_media/add', methods=['POST'])
+@login_required
+@admin_required
+def add_classified_media():
+    """添加涉密介质"""
+    try:
+        item = ClassifiedMedia(
+            media_id=request.form.get('media_id'),
+            media_type=request.form.get('media_type'),
+            brand_model=request.form.get('brand_model'),
+            serial_no=request.form.get('serial_no'),
+            classification=request.form.get('classification'),
+            custodian_id=request.form.get('custodian_id'),
+            custodian_name=request.form.get('custodian_name'),
+            dept_id=safe_int(request.form.get('dept_id')),
+            dept_name=request.form.get('dept_name'),
+            purpose=request.form.get('purpose'),
+            status=request.form.get('status', '在用'),
+            remark=request.form.get('remark')
+        )
+        db.session.add(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '添加成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/classified_media/get/<int:id>')
+@login_required
+@admin_required
+def get_classified_media(id):
+    item = ClassifiedMedia.query.get_or_404(id)
+    return jsonify({
+        'id': item.id, 'media_id': item.media_id, 'media_type': item.media_type,
+        'brand_model': item.brand_model, 'serial_no': item.serial_no,
+        'classification': item.classification, 'custodian_id': item.custodian_id,
+        'custodian_name': item.custodian_name, 'dept_id': item.dept_id,
+        'dept_name': item.dept_name, 'purpose': item.purpose,
+        'status': item.status, 'remark': item.remark
+    })
+
+@bp.route('/security/classified_media/edit/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def edit_classified_media(id):
+    item = ClassifiedMedia.query.get_or_404(id)
+    try:
+        item.media_id = request.form.get('media_id')
+        item.media_type = request.form.get('media_type')
+        item.brand_model = request.form.get('brand_model')
+        item.serial_no = request.form.get('serial_no')
+        item.classification = request.form.get('classification')
+        item.custodian_id = request.form.get('custodian_id')
+        item.custodian_name = request.form.get('custodian_name')
+        item.dept_id = safe_int(request.form.get('dept_id'))
+        item.dept_name = request.form.get('dept_name')
+        item.purpose = request.form.get('purpose')
+        item.status = request.form.get('status')
+        item.remark = request.form.get('remark')
+        db.session.commit()
+        return jsonify({'success': True, 'message': '更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/classified_media/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_classified_media(id):
+    item = ClassifiedMedia.query.get_or_404(id)
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+# ==================== 安全区域 CRUD ====================
+
+@bp.route('/security/security_zone/add', methods=['POST'])
+@login_required
+@admin_required
+def add_security_zone():
+    """添加安全区域"""
+    try:
+        item = SecurityZone(
+            zone_id=request.form.get('zone_id'),
+            zone_name=request.form.get('zone_name'),
+            zone_type=request.form.get('zone_type'),
+            location=request.form.get('location'),
+            manager_id=request.form.get('manager_id'),
+            manager_name=request.form.get('manager_name'),
+            dept_id=safe_int(request.form.get('dept_id')),
+            dept_name=request.form.get('dept_name'),
+            zone_level=request.form.get('zone_level'),
+            status=request.form.get('status', '正常'),
+            remark=request.form.get('remark')
+        )
+        db.session.add(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '添加成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/security_zone/get/<int:id>')
+@login_required
+@admin_required
+def get_security_zone(id):
+    item = SecurityZone.query.get_or_404(id)
+    return jsonify({
+        'id': item.id, 'zone_id': item.zone_id, 'zone_name': item.zone_name,
+        'zone_type': item.zone_type, 'location': item.location,
+        'manager_id': item.manager_id, 'manager_name': item.manager_name,
+        'dept_id': item.dept_id, 'dept_name': item.dept_name,
+        'zone_level': item.zone_level, 'status': item.status, 'remark': item.remark
+    })
+
+@bp.route('/security/security_zone/edit/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def edit_security_zone(id):
+    item = SecurityZone.query.get_or_404(id)
+    try:
+        item.zone_id = request.form.get('zone_id')
+        item.zone_name = request.form.get('zone_name')
+        item.zone_type = request.form.get('zone_type')
+        item.location = request.form.get('location')
+        item.manager_id = request.form.get('manager_id')
+        item.manager_name = request.form.get('manager_name')
+        item.dept_id = safe_int(request.form.get('dept_id'))
+        item.dept_name = request.form.get('dept_name')
+        item.zone_level = request.form.get('zone_level')
+        item.status = request.form.get('status')
+        item.remark = request.form.get('remark')
+        db.session.commit()
+        return jsonify({'success': True, 'message': '更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/security_zone/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_security_zone(id):
+    item = SecurityZone.query.get_or_404(id)
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+# ==================== 电子文件 CRUD ====================
+
+@bp.route('/security/electronic_document/add', methods=['POST'])
+@login_required
+@admin_required
+def add_electronic_document():
+    """添加电子文件"""
+    try:
+        item = ElectronicDocument(
+            doc_id=request.form.get('doc_id'),
+            doc_title=request.form.get('doc_title'),
+            classification=request.form.get('classification'),
+            file_format=request.form.get('file_format'),
+            drafter_id=request.form.get('drafter_id'),
+            drafter_name=request.form.get('drafter_name'),
+            draft_dept=request.form.get('draft_dept'),
+            storage_path=request.form.get('storage_path'),
+            custodian_id=request.form.get('custodian_id'),
+            custodian_name=request.form.get('custodian_name'),
+            dept_id=safe_int(request.form.get('dept_id')),
+            dept_name=request.form.get('dept_name'),
+            doc_status=request.form.get('doc_status', '正常'),
+            remark=request.form.get('remark')
+        )
+        db.session.add(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '添加成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/electronic_document/get/<int:id>')
+@login_required
+@admin_required
+def get_electronic_document(id):
+    item = ElectronicDocument.query.get_or_404(id)
+    return jsonify({
+        'id': item.id, 'doc_id': item.doc_id, 'doc_title': item.doc_title,
+        'classification': item.classification, 'file_format': item.file_format,
+        'drafter_id': item.drafter_id, 'drafter_name': item.drafter_name,
+        'draft_dept': item.draft_dept, 'storage_path': item.storage_path,
+        'custodian_id': item.custodian_id, 'custodian_name': item.custodian_name,
+        'dept_id': item.dept_id, 'dept_name': item.dept_name,
+        'doc_status': item.doc_status, 'remark': item.remark
+    })
+
+@bp.route('/security/electronic_document/edit/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def edit_electronic_document(id):
+    item = ElectronicDocument.query.get_or_404(id)
+    try:
+        item.doc_id = request.form.get('doc_id')
+        item.doc_title = request.form.get('doc_title')
+        item.classification = request.form.get('classification')
+        item.file_format = request.form.get('file_format')
+        item.drafter_id = request.form.get('drafter_id')
+        item.drafter_name = request.form.get('drafter_name')
+        item.draft_dept = request.form.get('draft_dept')
+        item.storage_path = request.form.get('storage_path')
+        item.custodian_id = request.form.get('custodian_id')
+        item.custodian_name = request.form.get('custodian_name')
+        item.dept_id = safe_int(request.form.get('dept_id'))
+        item.dept_name = request.form.get('dept_name')
+        item.doc_status = request.form.get('doc_status')
+        item.remark = request.form.get('remark')
+        db.session.commit()
+        return jsonify({'success': True, 'message': '更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/electronic_document/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_electronic_document(id):
+    item = ElectronicDocument.query.get_or_404(id)
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+# ==================== 纸质文件 CRUD ====================
+
+@bp.route('/security/paper_document/add', methods=['POST'])
+@login_required
+@admin_required
+def add_paper_document():
+    """添加纸质文件"""
+    try:
+        item = PaperDocument(
+            doc_id=request.form.get('doc_id'),
+            doc_title=request.form.get('doc_title'),
+            classification=request.form.get('classification'),
+            copies=safe_int(request.form.get('copies')),
+            pages=safe_int(request.form.get('pages')),
+            drafter_id=request.form.get('drafter_id'),
+            drafter_name=request.form.get('drafter_name'),
+            holder_id=request.form.get('holder_id'),
+            holder_name=request.form.get('holder_name'),
+            storage_location=request.form.get('storage_location'),
+            custodian_id=request.form.get('custodian_id'),
+            custodian_name=request.form.get('custodian_name'),
+            dept_id=safe_int(request.form.get('dept_id')),
+            dept_name=request.form.get('dept_name'),
+            doc_status=request.form.get('doc_status', '正常'),
+            remark=request.form.get('remark')
+        )
+        db.session.add(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '添加成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/paper_document/get/<int:id>')
+@login_required
+@admin_required
+def get_paper_document(id):
+    item = PaperDocument.query.get_or_404(id)
+    return jsonify({
+        'id': item.id, 'doc_id': item.doc_id, 'doc_title': item.doc_title,
+        'classification': item.classification, 'copies': item.copies,
+        'pages': item.pages, 'drafter_id': item.drafter_id,
+        'drafter_name': item.drafter_name, 'holder_id': item.holder_id,
+        'holder_name': item.holder_name, 'storage_location': item.storage_location,
+        'custodian_id': item.custodian_id, 'custodian_name': item.custodian_name,
+        'dept_id': item.dept_id, 'dept_name': item.dept_name,
+        'doc_status': item.doc_status, 'remark': item.remark
+    })
+
+@bp.route('/security/paper_document/edit/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def edit_paper_document(id):
+    item = PaperDocument.query.get_or_404(id)
+    try:
+        item.doc_id = request.form.get('doc_id')
+        item.doc_title = request.form.get('doc_title')
+        item.classification = request.form.get('classification')
+        item.copies = safe_int(request.form.get('copies'))
+        item.pages = safe_int(request.form.get('pages'))
+        item.drafter_id = request.form.get('drafter_id')
+        item.drafter_name = request.form.get('drafter_name')
+        item.holder_id = request.form.get('holder_id')
+        item.holder_name = request.form.get('holder_name')
+        item.storage_location = request.form.get('storage_location')
+        item.custodian_id = request.form.get('custodian_id')
+        item.custodian_name = request.form.get('custodian_name')
+        item.dept_id = safe_int(request.form.get('dept_id'))
+        item.dept_name = request.form.get('dept_name')
+        item.doc_status = request.form.get('doc_status')
+        item.remark = request.form.get('remark')
+        db.session.commit()
+        return jsonify({'success': True, 'message': '更新成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+
+@bp.route('/security/paper_document/delete/<int:id>', methods=['POST'])
+@login_required
+@admin_required
+def delete_paper_document(id):
+    item = PaperDocument.query.get_or_404(id)
+    try:
+        db.session.delete(item)
+        db.session.commit()
+        return jsonify({'success': True, 'message': '删除成功'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
 
 # ==================== 涉密人员导入导出 ====================
 
 @bp.route('/security/classified_personnel/export')
 @login_required
+@admin_required
 def export_classified_personnel():
     """导出涉密人员数据"""
     items = ClassifiedPersonnel.query.all()
@@ -690,6 +1210,7 @@ def export_classified_personnel():
 
 @bp.route('/security/classified_personnel/import', methods=['POST'])
 @login_required
+@admin_required
 def import_classified_personnel():
     """导入涉密人员数据"""
     if 'file' not in request.files:
@@ -722,7 +1243,7 @@ def import_classified_personnel():
                 
                 if existing:
                     existing.emp_name = emp_name
-                    existing.dept_id = str(ws.cell(row=row_num, column=3).value or '').strip()
+                    existing.dept_id = safe_int(ws.cell(row=row_num, column=3).value)
                     existing.dept_name = str(ws.cell(row=row_num, column=4).value or '').strip()
                     existing.position = str(ws.cell(row=row_num, column=5).value or '').strip()
                     existing.classification_level = str(ws.cell(row=row_num, column=6).value or '').strip()
@@ -737,7 +1258,7 @@ def import_classified_personnel():
                     item = ClassifiedPersonnel(
                         emp_id=emp_id,
                         emp_name=emp_name,
-                        dept_id=str(ws.cell(row=row_num, column=3).value or '').strip(),
+                        dept_id=safe_int(ws.cell(row=row_num, column=3).value),
                         dept_name=str(ws.cell(row=row_num, column=4).value or '').strip(),
                         position=str(ws.cell(row=row_num, column=5).value or '').strip(),
                         classification_level=str(ws.cell(row=row_num, column=6).value or '').strip(),
@@ -767,6 +1288,7 @@ def import_classified_personnel():
 
 @bp.route('/security/classified_personnel/template')
 @login_required
+@admin_required
 def download_classified_personnel_template():
     """下载涉密人员导入模板"""
     wb = openpyxl.Workbook()
@@ -787,7 +1309,7 @@ def download_classified_personnel_template():
         cell.font = header_font
         cell.border = thin_border
     
-    sample_data = ['E001', '张三', 'D001', '技术部', '工程师', '机密', '已培训', 
+    sample_data = ['E001', '张三', 1, '技术部', '工程师', '机密', '已培训', 
                    '保密协议', '2024-01-01', '在职', '2024-01-01', '2025-01-01', '备注']
     for col, value in enumerate(sample_data, 1):
         ws.cell(row=2, column=col, value=value).border = thin_border
@@ -811,6 +1333,7 @@ def download_classified_personnel_template():
 
 @bp.route('/security/classified_media/export')
 @login_required
+@admin_required
 def export_classified_media():
     """导出涉密介质数据"""
     items = ClassifiedMedia.query.all()
@@ -869,6 +1392,7 @@ def export_classified_media():
 
 @bp.route('/security/classified_media/import', methods=['POST'])
 @login_required
+@admin_required
 def import_classified_media():
     """导入涉密介质数据"""
     if 'file' not in request.files:
@@ -902,7 +1426,7 @@ def import_classified_media():
                     'classification': str(ws.cell(row=row_num, column=5).value or '').strip(),
                     'custodian_id': str(ws.cell(row=row_num, column=6).value or '').strip(),
                     'custodian_name': str(ws.cell(row=row_num, column=7).value or '').strip(),
-                    'dept_id': str(ws.cell(row=row_num, column=8).value or '').strip(),
+                    'dept_id': safe_int(ws.cell(row=row_num, column=8).value),
                     'dept_name': str(ws.cell(row=row_num, column=9).value or '').strip(),
                     'purpose': str(ws.cell(row=row_num, column=10).value or '').strip(),
                     'status': str(ws.cell(row=row_num, column=11).value or '').strip(),
@@ -932,6 +1456,7 @@ def import_classified_media():
 
 @bp.route('/security/classified_media/template')
 @login_required
+@admin_required
 def download_classified_media_template():
     """下载涉密介质导入模板"""
     wb = openpyxl.Workbook()
@@ -972,6 +1497,7 @@ def download_classified_media_template():
 
 @bp.route('/security/security_zone/export')
 @login_required
+@admin_required
 def export_security_zone():
     """导出安全区域数据"""
     items = SecurityZone.query.all()
@@ -1023,6 +1549,7 @@ def export_security_zone():
 
 @bp.route('/security/security_zone/import', methods=['POST'])
 @login_required
+@admin_required
 def import_security_zone():
     """导入安全区域数据"""
     if 'file' not in request.files:
@@ -1055,7 +1582,7 @@ def import_security_zone():
                     'location': str(ws.cell(row=row_num, column=4).value or '').strip(),
                     'manager_id': str(ws.cell(row=row_num, column=5).value or '').strip(),
                     'manager_name': str(ws.cell(row=row_num, column=6).value or '').strip(),
-                    'dept_id': str(ws.cell(row=row_num, column=7).value or '').strip(),
+                    'dept_id': safe_int(ws.cell(row=row_num, column=7).value),
                     'dept_name': str(ws.cell(row=row_num, column=8).value or '').strip(),
                     'status': str(ws.cell(row=row_num, column=9).value or '').strip(),
                     'zone_code': str(ws.cell(row=row_num, column=10).value or '').strip(),
@@ -1084,6 +1611,7 @@ def import_security_zone():
 
 @bp.route('/security/security_zone/template')
 @login_required
+@admin_required
 def download_security_zone_template():
     """下载安全区域导入模板"""
     wb = openpyxl.Workbook()
@@ -1123,6 +1651,7 @@ def download_security_zone_template():
 
 @bp.route('/security/electronic_document/export')
 @login_required
+@admin_required
 def export_electronic_document():
     """导出电子文件数据"""
     items = ElectronicDocument.query.all()
@@ -1180,6 +1709,7 @@ def export_electronic_document():
 
 @bp.route('/security/electronic_document/import', methods=['POST'])
 @login_required
+@admin_required
 def import_electronic_document():
     """导入电子文件数据"""
     if 'file' not in request.files:
@@ -1216,7 +1746,7 @@ def import_electronic_document():
                     'storage_path': str(ws.cell(row=row_num, column=8).value or '').strip(),
                     'custodian_id': str(ws.cell(row=row_num, column=9).value or '').strip(),
                     'custodian_name': str(ws.cell(row=row_num, column=10).value or '').strip(),
-                    'dept_id': str(ws.cell(row=row_num, column=11).value or '').strip(),
+                    'dept_id': safe_int(ws.cell(row=row_num, column=11).value),
                     'dept_name': str(ws.cell(row=row_num, column=12).value or '').strip(),
                     'doc_status': str(ws.cell(row=row_num, column=13).value or '').strip(),
                     'doc_number': str(ws.cell(row=row_num, column=14).value or '').strip(),
@@ -1246,6 +1776,7 @@ def import_electronic_document():
 
 @bp.route('/security/electronic_document/template')
 @login_required
+@admin_required
 def download_electronic_document_template():
     """下载电子文件导入模板"""
     wb = openpyxl.Workbook()
@@ -1286,6 +1817,7 @@ def download_electronic_document_template():
 
 @bp.route('/security/paper_document/export')
 @login_required
+@admin_required
 def export_paper_document():
     """导出纸质文件数据"""
     items = PaperDocument.query.all()
@@ -1345,6 +1877,7 @@ def export_paper_document():
 
 @bp.route('/security/paper_document/import', methods=['POST'])
 @login_required
+@admin_required
 def import_paper_document():
     """导入纸质文件数据"""
     if 'file' not in request.files:
@@ -1374,8 +1907,8 @@ def import_paper_document():
                     'doc_id': doc_id,
                     'doc_title': str(ws.cell(row=row_num, column=2).value or '').strip(),
                     'classification': str(ws.cell(row=row_num, column=3).value or '').strip(),
-                    'copies': str(ws.cell(row=row_num, column=4).value or '').strip(),
-                    'pages': str(ws.cell(row=row_num, column=5).value or '').strip(),
+                    'copies': safe_int(ws.cell(row=row_num, column=4).value),
+                    'pages': safe_int(ws.cell(row=row_num, column=5).value),
                     'drafter_id': str(ws.cell(row=row_num, column=6).value or '').strip(),
                     'drafter_name': str(ws.cell(row=row_num, column=7).value or '').strip(),
                     'holder_id': str(ws.cell(row=row_num, column=8).value or '').strip(),
@@ -1383,14 +1916,14 @@ def import_paper_document():
                     'storage_location': str(ws.cell(row=row_num, column=10).value or '').strip(),
                     'custodian_id': str(ws.cell(row=row_num, column=11).value or '').strip(),
                     'custodian_name': str(ws.cell(row=row_num, column=12).value or '').strip(),
-                    'dept_id': str(ws.cell(row=row_num, column=13).value or '').strip(),
+                    'dept_id': safe_int(ws.cell(row=row_num, column=13).value),
                     'dept_name': str(ws.cell(row=row_num, column=14).value or '').strip(),
                     'doc_status': str(ws.cell(row=row_num, column=15).value or '').strip(),
                     'doc_number': str(ws.cell(row=row_num, column=16).value or '').strip(),
                     'doc_level': str(ws.cell(row=row_num, column=17).value or '').strip(),
                     'responsible_name': str(ws.cell(row=row_num, column=18).value or '').strip(),
                     'responsible_emp_id': str(ws.cell(row=row_num, column=19).value or '').strip(),
-                    'quantity': str(ws.cell(row=row_num, column=20).value or '').strip(),
+                    'quantity': safe_int(ws.cell(row=row_num, column=20).value),
                     'remark': str(ws.cell(row=row_num, column=21).value or '').strip()
                 }
                 
@@ -1413,6 +1946,7 @@ def import_paper_document():
 
 @bp.route('/security/paper_document/template')
 @login_required
+@admin_required
 def download_paper_document_template():
     """下载纸质文件导入模板"""
     wb = openpyxl.Workbook()

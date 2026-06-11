@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}智能填表助手 - AI Agent{% endblock %}
+
+{% block content %}
+<div class="mi-page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-file-earmark-text"></i> 智能填表助手</h1>
+        <p style="color:var(--text-hint);font-size:14px;margin-top:6px;">自动填充表单数据，智能校验和推荐</p>
+    </div>
+    <a href="{{ url_for('ai_agents.index') }}" class="mi-btn mi-btn-default"><i class="bi bi-arrow-left"></i> 返回工作台</a>
+</div>
+
+<div style="display:grid;grid-template-columns:360px 1fr;gap:20px;min-height:600px;">
+    <!-- 左侧：操作面板 -->
+    <div>
+        <!-- 自动填充区 -->
+        <div class="mi-card" style="margin-bottom:16px;">
+            <div class="mi-card-header"><i class="bi bi-magic"></i> 自动填充</div>
+            <div class="mi-card-body">
+                <div class="mi-form-group">
+                    <label class="mi-label">选择表单模板</label>
+                    <select id="templateSelect" class="mi-input mi-select" onchange="onTemplateChange()">
+                        <option value="">-- 选择表单类型 --</option>
+                        {% for tid, tmpl in templates.items() %}
+                        <option value="{{ tid }}">{{ tmpl.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">输入工号或姓名</label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="empInput" class="mi-input" placeholder="输入工号或姓名查询" style="flex:1;">
+                        <button class="mi-btn mi-btn-primary" onclick="autoFill()"><i class="bi bi-search"></i></button>
+                    </div>
+                </div>
+                <div id="personInfo" style="display:none;">
+                    <div style="font-size:12px;color:var(--text-hint);margin-bottom:6px;">查询到的人员信息</div>
+                    <div id="personDetail" style="font-size:13px;padding:10px;background:var(--bg);border-radius:8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快捷操作 -->
+        <div class="mi-card">
+            <div class="mi-card-header"><i class="bi bi-lightning"></i> 快捷操作</div>
+            <div class="mi-card-body" style="padding:12px;">
+                <button class="mi-btn mi-btn-default mi-btn-sm" style="width:100%;margin-bottom:8px;justify-content:center;" onclick="validateForm()">
+                    <i class="bi bi-check2-circle"></i> 校验表单数据
+                </button>
+                <button class="mi-btn mi-btn-default mi-btn-sm" style="width:100%;margin-bottom:8px;justify-content:center;" onclick="smartFill()">
+                    <i class="bi bi-lightbulb"></i> 智能填充建议
+                </button>
+                <button class="mi-btn mi-btn-default mi-btn-sm" style="width:100%;justify-content:center;" onclick="askQuestion()">
+                    <i class="bi bi-chat-dots"></i> 提问填表问题
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：表单 + 结果 -->
+    <div>
+        <!-- 表单区域 -->
+        <div class="mi-card" style="margin-bottom:16px;">
+            <div class="mi-card-header"><i class="bi bi-file-earmark-text"></i> <span id="formTitle">表单填写</span></div>
+            <div class="mi-card-body" id="formArea">
+                <div style="text-align:center;padding:40px;color:var(--text-hint);">
+                    <i class="bi bi-file-earmark-text" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3;"></i>
+                    <p>请先选择表单模板</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI结果区域 -->
+        <div class="mi-card">
+            <div class="mi-card-header"><i class="bi bi-robot"></i> AI分析结果</div>
+            <div class="mi-card-body" id="aiResultArea" style="min-height:200px;max-height:400px;overflow-y:auto;">
+                <div style="text-align:center;padding:30px;color:var(--text-hint);font-size:13px;">
+                    使用左侧功能后，AI分析结果将显示在这里
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var currentTemplate = null;
+var currentFormData = {};
+
+function onTemplateChange() {
+    var tid = document.getElementById('templateSelect').value;
+    currentTemplate = tid;
+    if (!tid) {
+        document.getElementById('formArea').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-hint);"><i class="bi bi-file-earmark-text" style="font-size:40px;display:block;margin-bottom:12px;opacity:0.3;"></i><p>请先选择表单模板</p></div>';
+        return;
+    }
+    var templates = {{ templates | tojson }};
+    var tmpl = templates[tid];
+    if (!tmpl) return;
+    
+    document.getElementById('formTitle').textContent = tmpl.name;
+    currentFormData = {};
+    
+    var html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">';
+    tmpl.fields.forEach(function(field) {
+        currentFormData[field.key] = '';
+        html += '<div class="mi-form-group" style="margin-bottom:12px;">';
+        html += '<label class="mi-label" style="font-size:13px;">' + field.label;
+        if (field.required) html += ' <span style="color:var(--danger);">*</span>';
+        html += '</label>';
+        html += '<input type="text" class="mi-input" id="field-' + field.key + '" data-key="' + field.key + '" placeholder="请输入' + field.label + '" onchange="updateFormData()">';
+        html += '</div>';
+    });
+    html += '</div>';
+    document.getElementById('formArea').innerHTML = html;
+}
+
+function updateFormData() {
+    document.querySelectorAll('#formArea input[data-key]').forEach(function(el) {
+        currentFormData[el.dataset.key] = el.value;
+    });
+}
+
+function setFormField(key, value) {
+    var el = document.getElementById('field-' + key);
+    if (el) { el.value = value || ''; currentFormData[key] = value || ''; }
+}
+
+function autoFill() {
+    var empInput = document.getElementById('empInput').value.trim();
+    var tid = document.getElementById('templateSelect').value;
+    if (!empInput) { showToast('请输入工号或姓名', 'warning'); return; }
+    
+    fetch('{{ url_for("ai_agents.form_auto_fill") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({emp_id_or_name: empInput, template_id: tid})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) {
+            var p = data.person;
+            document.getElementById('personInfo').style.display = '';
+            document.getElementById('personDetail').innerHTML = '<strong>' + p.emp_name + '</strong> (' + p.emp_id + ')<br>部门：' + (p.dept_full_name || '-') + '<br>职位：' + (p.position || '-') + '<br>状态：<span class="mi-badge ' + (p.emp_status === '在职' ? 'mi-badge-success' : 'mi-badge-danger') + '">' + p.emp_status + '</span>';
+            
+            // 如果有模板格式数据，自动填入
+            if (data.form_data) {
+                Object.keys(data.form_data).forEach(function(key) {
+                    setFormField(key, data.form_data[key]);
+                });
+                showToast('数据已自动填充', 'success');
+            } else {
+                // 手动映射
+                setFormField('emp_id', p.emp_id);
+                setFormField('emp_name', p.emp_name);
+                setFormField('dept_name', p.dept_full_name);
+                setFormField('position', p.position);
+                showToast('人员信息已填充', 'success');
+            }
+        } else {
+            showToast(data.error || '查询失败', 'danger');
+        }
+    });
+}
+
+function validateForm() {
+    var tid = document.getElementById('templateSelect').value;
+    if (!tid) { showToast('请先选择表单模板', 'warning'); return; }
+    updateFormData();
+    
+    var resultArea = document.getElementById('aiResultArea');
+    resultArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="mi-spinner" style="margin:0 auto;"></div><p style="margin-top:8px;color:var(--text-hint);font-size:13px;">AI正在校验...</p></div>';
+    
+    fetch('{{ url_for("ai_agents.form_validate") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({template_id: tid, form_data: currentFormData})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        var html = '';
+        if (data.basic_errors && data.basic_errors.length > 0) {
+            html += '<div style="margin-bottom:12px;"><strong style="color:var(--danger);">基础校验错误：</strong>';
+            data.basic_errors.forEach(function(e) { html += '<div style="font-size:13px;color:var(--danger);padding:2px 0;">❌ ' + e + '</div>'; });
+            html += '</div>';
+        }
+        if (data.validation) {
+            html += '<div><strong>AI深度校验：</strong><div style="margin-top:8px;">' + renderMarkdown(data.validation) + '</div></div>';
+        }
+        if (!html) html = '<div class="mi-alert mi-alert-success"><i class="bi bi-check-circle-fill"></i> 校验通过，未发现异常</div>';
+        resultArea.innerHTML = html;
+    });
+}
+
+function smartFill() {
+    var tid = document.getElementById('templateSelect').value;
+    if (!tid) { showToast('请先选择表单模板', 'warning'); return; }
+    updateFormData();
+    streamRequest('smart-fill', tid, '');
+}
+
+function askQuestion() {
+    var tid = document.getElementById('templateSelect').value;
+    if (!tid) { showToast('请先选择表单模板', 'warning'); return; }
+    var question = prompt('请输入您的填表问题：');
+    if (!question) return;
+    updateFormData();
+    streamRequest('ask', tid, question);
+}
+
+function streamRequest(mode, tid, question) {
+    var resultArea = document.getElementById('aiResultArea');
+    resultArea.innerHTML = '<div style="text-align:center;padding:20px;"><div class="mi-spinner" style="margin:0 auto;"></div><p style="margin-top:8px;color:var(--text-hint);font-size:13px;">AI正在分析...</p></div>';
+    
+    fetch('{{ url_for("ai_agents.form_smart_fill_stream") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({template_id: tid, partial_data: currentFormData, question: question})
+    }).then(function(response) {
+        resultArea.innerHTML = '';
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function read() {
+            reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                lines.forEach(function(line) {
+                    if (!line.startsWith('data: ')) return;
+                    try {
+                        var data = JSON.parse(line.slice(6));
+                        if (data.content) { resultArea.innerHTML += data.content; resultArea.scrollTop = resultArea.scrollHeight; }
+                        else if (data.done) { resultArea.innerHTML = renderMarkdown(resultArea.textContent); }
+                        else if (data.error) { resultArea.innerHTML += '<div class="mi-alert mi-alert-danger">' + data.error + '</div>'; }
+                    } catch(e) {}
+                });
+                read();
+            });
+        }
+        read();
+    });
+}
+</script>
+{% endblock %}

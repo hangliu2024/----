@@ -1,114 +1,92 @@
 {% extends "base.html" %}
 
-{% block title %}权限矩阵 - 系统功能模块{% endblock %}
+{% block title %}权限矩阵 - 资产管理系统{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0"><i class="bi bi-grid-3x3-gap-fill"></i> 权限矩阵 - 系统功能模块</h4>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h3 class="text-primary">{{ roles|length }}</h3>
-                                    <p class="mb-0">角色数量</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h3 class="text-success">{{ modules|length }}</h3>
-                                    <p class="mb-0">功能模块</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center">
-                                    <h3 class="text-warning">{{ permission_matrix|length }}</h3>
-                                    <p class="mb-0">权限配置</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-3 p-3 bg-info text-white rounded">
-                        <div class="d-flex flex-wrap gap-3">
-                            <span><strong>图例：</strong></span>
-                            <span><span class="badge bg-success">V</span> = 查看</span>
-                            <span><span class="badge bg-primary">+</span> = 新增</span>
-                            <span><span class="badge bg-warning text-dark">E</span> = 编辑</span>
-                            <span><span class="badge bg-danger">D</span> = 删除</span>
-                            <span><span class="badge bg-secondary">X</span> = 导出</span>
-                            <span><span class="badge bg-info">I</span> = 导入</span>
-                            <span><span class="badge bg-dark">A</span> = 审批</span>
-                        </div>
-                    </div>
-                    
-                    <div class="table-responsive" style="max-height: 600px; overflow-y: auto;">
-                        <table class="table table-bordered table-striped table-hover">
-                            <thead class="table-dark" style="position: sticky; top: 0; z-index: 10;">
-                                <tr>
-                                    <th class="text-center" style="min-width: 200px;">功能模块</th>
-                                    {% for role in roles %}
-                                    <th class="text-center" style="min-width: 120px;">{{ role.role_name }}</th>
-                                    {% endfor %}
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for module in modules %}
-                                {% set parent_module = module.parent_id == 0 %}
-                                <tr {% if not parent_module %}class="table-secondary"{% endif %}>
-                                    <td class="{% if parent_module %}fw-bold{% else %}ps-4{% endif %}">
-                                        <i class="bi {{ module.icon or 'bi-folder' }} me-2"></i>
-                                        {{ module.module_name }}
-                                    </td>
-                                    {% for role in roles %}
-                                    {% set perm = permission_matrix[module.id][role.id] if permission_matrix[module.id] and permission_matrix[module.id][role.id] else none %}
-                                    <td class="text-center">
-                                        {% if perm and (perm.can_view or perm.can_add or perm.can_edit or perm.can_delete or perm.can_export or perm.can_import or perm.can_approve) %}
-                                        <div class="d-flex flex-wrap justify-content-center gap-1">
-                                            {% if perm.can_view %}
-                                            <span class="badge bg-success" title="查看">V</span>
-                                            {% endif %}
-                                            {% if perm.can_add %}
-                                            <span class="badge bg-primary" title="新增">+</span>
-                                            {% endif %}
-                                            {% if perm.can_edit %}
-                                            <span class="badge bg-warning text-dark" title="编辑">E</span>
-                                            {% endif %}
-                                            {% if perm.can_delete %}
-                                            <span class="badge bg-danger" title="删除">D</span>
-                                            {% endif %}
-                                            {% if perm.can_export %}
-                                            <span class="badge bg-secondary" title="导出">X</span>
-                                            {% endif %}
-                                            {% if perm.can_import %}
-                                            <span class="badge bg-info" title="导入">I</span>
-                                            {% endif %}
-                                            {% if perm.can_approve %}
-                                            <span class="badge bg-dark" title="审批">A</span>
-                                            {% endif %}
-                                        </div>
-                                        {% else %}
-                                        <span class="text-muted">-</span>
-                                        {% endif %}
-                                    </td>
-                                    {% endfor %}
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-grid-3x3-gap-fill"></i> 权限矩阵</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">配置系统功能模块的访问权限</p>
+    </div>
+</div>
+
+<div class="mi-card">
+    <div class="mi-card-body" style="padding-bottom:16px">
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+            <span style="font-weight:500;color:var(--text-secondary)"><i class="bi bi-info-circle" style="color:var(--accent)"></i> 权限图例：</span>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge mi-badge-success">V</span> 查看</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge mi-badge-primary">+</span> 新增</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge mi-badge-warning">E</span> 编辑</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge mi-badge-danger">D</span> 删除</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge mi-badge-default">X</span> 导出</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge mi-badge-info">I</span> 导入</span>
+                <span style="display:flex;align-items:center;gap:4px"><span class="mi-badge" style="background:#1f2937;color:#fff">A</span> 审批</span>
             </div>
         </div>
     </div>
+    
+    {% if modules %}
+    <div class="mi-table-wrap" style="border:none;border-radius:0;max-height:600px;overflow-y:auto">
+        <table class="mi-table">
+            <thead style="position:sticky;top:0;z-index:10">
+                <tr>
+                    <th style="background:#fff">功能模块</th>
+                    {% for role in roles %}
+                    <th style="text-align:center;background:#fff">{{ role.role_name }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for module in modules %}
+                {% set is_parent = module.parent_id == 0 %}
+                <tr>
+                    <td>
+                        {% if is_parent %}
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <div style="width:36px;height:36px;border-radius:8px;background:var(--accent-light);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">
+                                <i class="bi {{ module.icon or 'bi-folder' }}"></i>
+                            </div>
+                            <div style="font-weight:600;color:var(--text-primary)">{{ module.module_name }}</div>
+                        </div>
+                        {% else %}
+                        <div style="display:flex;align-items:center;gap:12px;padding-left:48px">
+                            <div style="width:28px;height:28px;border-radius:6px;background:var(--bg);color:var(--text-secondary);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0">
+                                <i class="bi {{ module.icon or 'bi-folder' }}"></i>
+                            </div>
+                            <div style="color:var(--text-secondary)">{{ module.module_name }}</div>
+                        </div>
+                        {% endif %}
+                    </td>
+                    {% for role in roles %}
+                    {% set perm = permission_matrix.get(module.id, {}).get(role.id) if permission_matrix.get(module.id) else none %}
+                    <td style="text-align:center">
+                        {% if perm and (perm.can_view or perm.can_add or perm.can_edit or perm.can_delete or perm.can_export or perm.can_import or perm.can_approve) %}
+                        <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:2px">
+                            {% if perm.can_view %}<span class="mi-badge mi-badge-success" title="查看">V</span>{% endif %}
+                            {% if perm.can_add %}<span class="mi-badge mi-badge-primary" title="新增">+</span>{% endif %}
+                            {% if perm.can_edit %}<span class="mi-badge mi-badge-warning" title="编辑">E</span>{% endif %}
+                            {% if perm.can_delete %}<span class="mi-badge mi-badge-danger" title="删除">D</span>{% endif %}
+                            {% if perm.can_export %}<span class="mi-badge mi-badge-default" title="导出">X</span>{% endif %}
+                            {% if perm.can_import %}<span class="mi-badge mi-badge-info" title="导入">I</span>{% endif %}
+                            {% if perm.can_approve %}<span class="mi-badge" style="background:#1f2937;color:#fff" title="审批">A</span>{% endif %}
+                        </div>
+                        {% else %}
+                        <span style="color:var(--text-hint)">-</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center;padding:64px 24px;color:var(--text-hint)">
+        <i class="bi bi-grid-3x3-gap" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.3"></i>
+        <h3 style="font-size:16px;color:var(--text-secondary);margin-bottom:8px">暂无权限数据</h3>
+        <p style="font-size:14px">请先添加功能模块和角色</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

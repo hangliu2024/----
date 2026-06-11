@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}编辑SOP{% else %}新增SOP{% endif %} - 案件管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-list-check"></i> {% if item %}编辑SOP{% else %}新增SOP{% endif %}</h1>
+</div>
+<div class="mi-card"><div class="mi-card-body">
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+            <div class="mi-form-group"><label class="mi-label">SOP编号 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="sop_no" value="{{ item.sop_no if item else '' }}" class="mi-input" required placeholder="如: SOP-2026-001"></div>
+            <div class="mi-form-group"><label class="mi-label">SOP标题 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="sop_title" value="{{ item.sop_title if item else '' }}" class="mi-input" required></div>
+            <div class="mi-form-group"><label class="mi-label">适用类型</label>
+                <select name="sop_type" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for t in ['信息安全','数据泄露','违规操作','其他'] %}<option value="{{ t }}" {% if item and item.sop_type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">版本号</label>
+                <input type="text" name="sop_version" value="{{ item.sop_version if item else '1.0' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">责任角色</label>
+                <input type="text" name="responsible_role" value="{{ item.responsible_role if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">状态</label>
+                <select name="status" class="mi-input mi-select">
+                    {% for s in [('draft','草稿'),('published','已发布'),('archived','已归档')] %}<option value="{{ s[0] }}" {% if item and item.status==s[0] %}selected{% endif %}>{{ s[1] }}</option>{% endfor %}
+                </select></div>
+        </div>
+        <div class="mi-form-group"><label class="mi-label">适用范围</label>
+            <textarea name="applicable_scope" class="mi-input mi-textarea" rows="2">{{ item.applicable_scope if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">调查步骤</label>
+            <textarea name="investigation_steps" class="mi-input mi-textarea" rows="4">{{ item.investigation_steps if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">证据要求</label>
+            <textarea name="evidence_requirements" class="mi-input mi-textarea" rows="3">{{ item.evidence_requirements if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">时限要求</label>
+            <textarea name="timeline_requirements" class="mi-input mi-textarea" rows="2">{{ item.timeline_requirements if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">审批流程</label>
+            <textarea name="approval_process" class="mi-input mi-textarea" rows="3">{{ item.approval_process if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">备注</label>
+            <textarea name="remark" class="mi-input mi-textarea" rows="2">{{ item.remark if item else '' }}</textarea></div>
+        <div style="display:flex;gap:12px;padding-top:16px;border-top:1px solid var(--border-light)">
+            <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 保存</button>
+            <a href="{{ url_for('case_management.sop_list') }}" class="mi-btn mi-btn-default"><i class="bi bi-x-lg"></i> 取消</a>
+        </div>
+    </form>
+</div></div>
+{% endblock %}

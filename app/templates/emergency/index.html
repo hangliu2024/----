@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}应急管理 - 信息资产管理系统{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-exclamation-triangle"></i> 应急管理</h1>
+</div>
+<div class="mi-stats">
+    <div class="mi-stat-card accent" onclick="location.href='{{ url_for('emergency.plans') }}'" style="cursor:pointer">
+        <div class="mi-stat-label">应急预案</div>
+        <div class="mi-stat-value">{{ plan_count }}</div>
+        <i class="bi bi-file-earmark-medical mi-stat-icon"></i>
+    </div>
+    <div class="mi-stat-card warning" onclick="location.href='{{ url_for('emergency.drills') }}'" style="cursor:pointer">
+        <div class="mi-stat-label">应急演练</div>
+        <div class="mi-stat-value">{{ drill_count }}</div>
+        <i class="bi bi-megaphone mi-stat-icon"></i>
+    </div>
+    <div class="mi-stat-card info" onclick="location.href='{{ url_for('emergency.teams') }}'" style="cursor:pointer">
+        <div class="mi-stat-label">应急小组</div>
+        <div class="mi-stat-value">{{ team_count }}</div>
+        <i class="bi bi-people-fill mi-stat-icon"></i>
+    </div>
+</div>
+<div class="mi-card">
+    <div class="mi-card-header"><i class="bi bi-grid-3x3-gap"></i> 功能导航</div>
+    <div class="mi-card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+            <a href="{{ url_for('emergency.plans') }}" class="mi-btn mi-btn-default" style="justify-content:center;padding:20px;font-size:15px">
+                <i class="bi bi-file-earmark-medical"></i> 应急预案管理
+            </a>
+            <a href="{{ url_for('emergency.drills') }}" class="mi-btn mi-btn-default" style="justify-content:center;padding:20px;font-size:15px">
+                <i class="bi bi-megaphone"></i> 应急演练管理
+            </a>
+            <a href="{{ url_for('emergency.teams') }}" class="mi-btn mi-btn-default" style="justify-content:center;padding:20px;font-size:15px">
+                <i class="bi bi-people-fill"></i> 应急小组管理
+            </a>
+        </div>
+    </div>
+</div>
+{% if recent_drills %}
+<div class="mi-card" style="margin-top:20px">
+    <div class="mi-card-header"><i class="bi bi-clock-history"></i> 最近演练</div>
+    <div class="mi-card-body">
+        <div class="mi-table-wrap"><table class="mi-table"><thead><tr>
+            <th>演练编号</th><th>演练名称</th><th>类型</th><th>日期</th><th>状态</th>
+        </tr></thead><tbody>
+        {% for d in recent_drills %}
+        <tr><td>{{ d.drill_no }}</td><td>{{ d.drill_title }}</td>
+            <td><span class="mi-badge mi-badge-info">{{ d.drill_type or '-' }}</span></td>
+            <td>{{ d.drill_date or '-' }}</td>
+            <td>{% if d.status=='completed' %}<span class="mi-badge mi-badge-success">已完成</span>{% elif d.status=='in_progress' %}<span class="mi-badge mi-badge-warning">进行中</span>{% else %}<span class="mi-badge mi-badge-default">计划中</span>{% endif %}</td>
+        </tr>{% endfor %}
+        </tbody></table></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

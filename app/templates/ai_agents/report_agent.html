@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}报告生成助手 - AI Agent{% endblock %}
+
+{% block content %}
+<div class="mi-page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-graph-up-arrow"></i> 报告生成助手</h1>
+        <p style="color:var(--text-hint);font-size:14px;margin-top:6px;">基于数据自动生成分析报告和工作总结</p>
+    </div>
+    <a href="{{ url_for('ai_agents.index') }}" class="mi-btn mi-btn-default"><i class="bi bi-arrow-left"></i> 返回工作台</a>
+</div>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;min-height:600px;">
+    <!-- 左侧：配置面板 -->
+    <div class="mi-card">
+        <div class="mi-card-header"><i class="bi bi-gear"></i> 报告配置</div>
+        <div class="mi-card-body">
+            <div class="mi-form-group">
+                <label class="mi-label">报告类型</label>
+                <select id="reportType" class="mi-input mi-select">
+                    <option value="personnel">人员统计分析报告</option>
+                    <option value="asset">资产盘点汇总报告</option>
+                    <option value="audit">稽查工作总结报告</option>
+                    <option value="security">保密检查情况通报</option>
+                </select>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">指定部门（可选）</label>
+                <input type="text" id="deptName" class="mi-input" placeholder="留空则统计全部">
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">补充说明（可选）</label>
+                <textarea id="extraContext" class="mi-input mi-textarea" placeholder="输入额外的报告要求或背景信息..." style="min-height:100px;"></textarea>
+            </div>
+            <button class="mi-btn mi-btn-primary" style="width:100%;justify-content:center;" onclick="generateReport()">
+                <i class="bi bi-magic"></i> 生成报告
+            </button>
+        </div>
+    </div>
+
+    <!-- 右侧：报告输出 -->
+    <div class="mi-card">
+        <div class="mi-card-header" style="justify-content:space-between;">
+            <span><i class="bi bi-file-earmark-text"></i> <span id="reportTitle">报告预览</span></span>
+            <button class="mi-btn mi-btn-ghost mi-btn-sm" onclick="copyReport()"><i class="bi bi-clipboard"></i> 复制</button>
+        </div>
+        <div class="mi-card-body" id="reportArea" style="min-height:500px;max-height:700px;overflow-y:auto;">
+            <div style="text-align:center;padding:60px 20px;color:var(--text-hint);">
+                <i class="bi bi-graph-up-arrow" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.3;"></i>
+                <p style="font-size:15px;">选择报告类型并点击生成</p>
+                <p style="font-size:13px;">AI将自动汇总数据并生成分析报告</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generateReport() {
+    var reportType = document.getElementById('reportType').value;
+    var deptName = document.getElementById('deptName').value.trim();
+    var extraContext = document.getElementById('extraContext').value.trim();
+    
+    var typeNames = {personnel: '人员统计分析报告', asset: '资产盘点汇总报告', audit: '稽查工作总结报告', security: '保密检查情况通报'};
+    document.getElementById('reportTitle').textContent = typeNames[reportType] || '报告';
+    
+    var reportArea = document.getElementById('reportArea');
+    reportArea.innerHTML = '<div style="text-align:center;padding:40px;"><div class="mi-spinner" style="margin:0 auto;"></div><p style="margin-top:12px;color:var(--text-hint);">AI正在生成报告，请稍候...</p></div>';
+    
+    fetch('{{ url_for("ai_agents.report_generate") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({report_type: reportType, dept_name: deptName, extra_context: extraContext})
+    }).then(function(response) {
+        reportArea.innerHTML = '';
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function read() {
+            reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                lines.forEach(function(line) {
+                    if (!line.startsWith('data: ')) return;
+                    try {
+                        var data = JSON.parse(line.slice(6));
+                        if (data.content) { reportArea.innerHTML += data.content; reportArea.scrollTop = reportArea.scrollHeight; }
+                        else if (data.done) { reportArea.innerHTML = renderMarkdown(reportArea.textContent); }
+                        else if (data.error) { reportArea.innerHTML += '<div class="mi-alert mi-alert-danger">' + data.error + '</div>'; }
+                    } catch(e) {}
+                });
+                read();
+            });
+        }
+        read();
+    });
+}
+
+function copyReport() {
+    var text = document.getElementById('reportArea').textContent;
+    navigator.clipboard.writeText(text).then(function() { showToast('报告已复制到剪贴板', 'success'); });
+}
+</script>
+{% endblock %}

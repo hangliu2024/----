@@ -3,294 +3,221 @@
 {% block title %}仪表盘 - 资产管理系统{% endblock %}
 
 {% block content %}
-<style>
-    .welcome-bar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 2rem;
-    }
-    .welcome-bar h1 {
-        font-weight: 700;
-        font-size: 1.75rem;
-        color: #1a1a2e;
-        margin: 0;
-    }
-    .welcome-bar h1 i { color: #667eea; margin-right: 10px; }
-    .welcome-bar p { color: #888; font-size: 0.9rem; margin: 4px 0 0; }
-    .date-badge {
-        background: #fff;
-        border: 1px solid #e8e8e8;
-        border-radius: 8px;
-        padding: 10px 18px;
-        font-size: 0.85rem;
-        color: #666;
-        white-space: nowrap;
-    }
-    .date-badge i { color: #667eea; margin-right: 6px; }
-
-    .kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1.25rem;
-        margin-bottom: 2rem;
-    }
-
-    .kpi-card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 1.5rem 1.75rem;
-        border: 1px solid #f0f0f0;
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        transition: box-shadow 0.2s, transform 0.2s;
-        cursor: pointer;
-        text-decoration: none;
-        color: inherit;
-    }
-    .kpi-card:hover {
-        box-shadow: 0 8px 25px rgba(0,0,0,.06);
-        transform: translateY(-2px);
-    }
-
-    .kpi-icon {
-        width: 56px;
-        height: 56px;
-        border-radius: 14px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.6rem;
-        flex-shrink: 0;
-    }
-    .kpi-icon.blue   { background: #eef2ff; color: #4f6ef7; }
-    .kpi-icon.teal   { background: #e6f7f5; color: #0ea882; }
-    .kpi-icon.orange { background: #fff7ed; color: #f07427; }
-
-    .kpi-info { flex: 1; min-width: 0; }
-    .kpi-label  { font-size: 0.85rem; color: #999; margin-bottom: 4px; }
-    .kpi-value  { font-size: 2rem; font-weight: 700; color: #1a1a2e; line-height: 1.1; }
-    .kpi-meta   { font-size: 0.8rem; color: #bbb; margin-top: 2px; }
-    .kpi-arrow  { color: #ccc; font-size: 1.2rem; flex-shrink: 0; }
-
-    .section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-    .section-header h5 {
-        font-weight: 700;
-        font-size: 1.05rem;
-        color: #333;
-        margin: 0;
-    }
-    .section-header h5 i { color: #667eea; margin-right: 8px; }
-
-    .quick-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1rem;
-    }
-    .quick-card {
-        background: #fff;
-        border: 1px solid #f0f0f0;
-        border-radius: 10px;
-        padding: 1.25rem 1rem;
-        text-align: center;
-        text-decoration: none;
-        color: #444;
-        transition: all 0.2s;
-    }
-    .quick-card:hover {
-        box-shadow: 0 4px 15px rgba(0,0,0,.06);
-        transform: translateY(-2px);
-        color: #4f6ef7;
-    }
-    .quick-card .icon-wrap {
-        display: inline-flex;
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        margin-bottom: 10px;
-    }
-    .quick-card .icon-wrap.c1 { background: #eef2ff; color: #4f6ef7; }
-    .quick-card .icon-wrap.c2 { background: #fef3e2; color: #f59e0b; }
-    .quick-card .icon-wrap.c3 { background: #e6f7f5; color: #10b981; }
-    .quick-card .icon-wrap.c4 { background: #fce4ec; color: #e91e63; }
-    .quick-card .label { font-size: 0.85rem; font-weight: 600; }
-
-    .section-header.mt-4 { margin-top: 2rem !important; }
-
-    .module-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1rem;
-    }
-    .module-card {
-        background: #fff;
-        border: 1px solid #f0f0f0;
-        border-radius: 10px;
-        padding: 1rem 1.25rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        text-decoration: none;
-        color: #444;
-        transition: all 0.2s;
-    }
-    .module-card:hover {
-        box-shadow: 0 4px 15px rgba(0,0,0,.06);
-        transform: translateY(-2px);
-        color: #4f6ef7;
-    }
-    .module-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.15rem;
-        flex-shrink: 0;
-    }
-    .module-icon.c-blue   { background: #eef2ff; color: #4f6ef7; }
-    .module-icon.c-orange { background: #fff7ed; color: #f07427; }
-    .module-icon.c-yellow { background: #fefce8; color: #ca8a04; }
-    .module-icon.c-green  { background: #ecfdf5; color: #059669; }
-    .module-icon.c-pink   { background: #fdf2f8; color: #db2777; }
-    .module-icon.c-purple { background: #f5f3ff; color: #7c3aed; }
-    .module-body { flex: 1; min-width: 0; }
-    .module-title { font-size: 0.9rem; font-weight: 600; color: #333; }
-    .module-desc  { font-size: 0.78rem; color: #aaa; margin-top: 2px; }
-
-    @media (max-width: 992px) {
-        .kpi-grid { grid-template-columns: 1fr; }
-        .quick-grid { grid-template-columns: repeat(2, 1fr); }
-        .module-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-</style>
-
-<div class="welcome-bar">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
     <div>
-        <h1><i class="bi bi-speedometer2"></i>仪表盘</h1>
-        <p>数据总览 · 实时更新</p>
+        <h1 style="font-size:22px;font-weight:600;color:var(--text-primary);margin:0">
+            <i class="bi bi-grid-1x2" style="color:var(--accent)"></i> 仪表盘
+        </h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">数据总览 · 实时更新</p>
     </div>
-    <div class="date-badge">
+    <div style="font-size:14px;color:var(--text-secondary);display:flex;align-items:center;gap:6px">
         <i class="bi bi-calendar3"></i> <span id="liveDate"></span>
     </div>
 </div>
 
-<div class="kpi-grid">
-    <a href="{{ url_for('assets.office_computers') }}" class="kpi-card">
-        <div class="kpi-icon blue"><i class="bi bi-laptop"></i></div>
-        <div class="kpi-info">
-            <div class="kpi-label">办公电脑</div>
-            <div class="kpi-value">{{ office_computers_count }}</div>
-            <div class="kpi-meta">台 · 已纳管</div>
-        </div>
-        <div class="kpi-arrow"><i class="bi bi-chevron-right"></i></div>
+<!-- KPI Cards -->
+<div class="mi-stats" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+    <a href="{{ url_for('assets.office_computers') }}" class="mi-stat-card accent" style="text-decoration:none;color:inherit">
+        <div class="mi-stat-label">办公电脑</div>
+        <div class="mi-stat-value">{{ office_computers_count }}</div>
+        <div style="font-size:13px;color:var(--text-hint);margin-top:4px">台 · 已纳管</div>
+        <i class="bi bi-laptop mi-stat-icon"></i>
     </a>
-
-    <a href="{{ url_for('assets.industrial_computers') }}" class="kpi-card">
-        <div class="kpi-icon orange"><i class="bi bi-cpu"></i></div>
-        <div class="kpi-info">
-            <div class="kpi-label">工控机</div>
-            <div class="kpi-value">{{ industrial_computers_count }}</div>
-            <div class="kpi-meta">台 · 已纳管</div>
-        </div>
-        <div class="kpi-arrow"><i class="bi bi-chevron-right"></i></div>
+    <a href="{{ url_for('assets.industrial_computers') }}" class="mi-stat-card info" style="text-decoration:none;color:inherit">
+        <div class="mi-stat-label">工控机</div>
+        <div class="mi-stat-value">{{ industrial_computers_count }}</div>
+        <div style="font-size:13px;color:var(--text-hint);margin-top:4px">台 · 已纳管</div>
+        <i class="bi bi-cpu mi-stat-icon"></i>
     </a>
-
-    <a href="{{ url_for('personnel.personnel_list') }}" class="kpi-card">
-        <div class="kpi-icon teal"><i class="bi bi-people"></i></div>
-        <div class="kpi-info">
-            <div class="kpi-label">在职人员</div>
-            <div class="kpi-value">{{ personnel_count }}</div>
-            <div class="kpi-meta">人 · 正式员工</div>
-        </div>
-        <div class="kpi-arrow"><i class="bi bi-chevron-right"></i></div>
+    <a href="{{ url_for('personnel.personnel_list') }}" class="mi-stat-card success" style="text-decoration:none;color:inherit">
+        <div class="mi-stat-label">在职人员</div>
+        <div class="mi-stat-value">{{ personnel_count }}</div>
+        <div style="font-size:13px;color:var(--text-hint);margin-top:4px">人 · 共{{ personnel_total or personnel_count }}人</div>
+        <i class="bi bi-people mi-stat-icon"></i>
+    </a>
+    <a href="{% if current_user.role == 'admin' %}{{ url_for('departments.manage_departments') }}{% else %}#{% endif %}" class="mi-stat-card warning" style="text-decoration:none;color:inherit">
+        <div class="mi-stat-label">部门数量</div>
+        <div class="mi-stat-value">{{ dept_count }}</div>
+        <div style="font-size:13px;color:var(--text-hint);margin-top:4px">个 · 已纳管</div>
+        <i class="bi bi-building mi-stat-icon"></i>
     </a>
 </div>
 
-<div class="section-header">
-    <h5><i class="bi bi-grid-3x3-gap"></i>快捷入口</h5>
+<!-- Quick Access -->
+<div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:16px;display:flex;align-items:center;gap:8px">
+    <i class="bi bi-grid-3x3-gap" style="color:var(--accent)"></i> 快捷入口
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:32px">
+    <a href="{{ url_for('personnel.personnel_list') }}" class="mi-card" style="text-align:center;text-decoration:none;color:inherit;padding:24px 16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:#667eea;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px">
+            <i class="bi bi-people-fill"></i>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">人员管理</div>
+    </a>
+    <a href="{{ url_for('assets.office_computers') }}" class="mi-card" style="text-align:center;text-decoration:none;color:inherit;padding:24px 16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:#0d6efd;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px">
+            <i class="bi bi-laptop-fill"></i>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">办公电脑</div>
+    </a>
+    <a href="{{ url_for('security.index') }}" class="mi-card" style="text-align:center;text-decoration:none;color:inherit;padding:24px 16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:#f59e0b;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">保密管理</div>
+    </a>
+    <a href="{{ url_for('audit.task_list') }}" class="mi-card" style="text-align:center;text-decoration:none;color:inherit;padding:24px 16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:#10b981;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px">
+            <i class="bi bi-clipboard-check-fill"></i>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">稽查管理</div>
+    </a>
+    <a href="{{ url_for('ai_assistant.ai_assistant') }}" class="mi-card" style="text-align:center;text-decoration:none;color:inherit;padding:24px 16px">
+        <div style="width:48px;height:48px;border-radius:12px;background:#ec4899;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:10px">
+            <i class="bi bi-robot"></i>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary)">AI 助手</div>
+    </a>
 </div>
 
-<div class="quick-grid">
-    <a href="{{ url_for('personnel.personnel_list') }}" class="quick-card">
-        <div class="icon-wrap c1"><i class="bi bi-people-fill"></i></div>
-        <div class="label">人员管理</div>
-    </a>
-    <a href="{{ url_for('security.index') }}" class="quick-card">
-        <div class="icon-wrap c2"><i class="bi bi-shield-lock-fill"></i></div>
-        <div class="label">保密管理</div>
-    </a>
-    <a href="{{ url_for('audit.task_list') }}" class="quick-card">
-        <div class="icon-wrap c3"><i class="bi bi-clipboard-check"></i></div>
-        <div class="label">稽查管理</div>
-    </a>
-    <a href="{{ url_for('ai_assistant.ai_assistant') }}" class="quick-card">
-        <div class="icon-wrap c4"><i class="bi bi-robot"></i></div>
-        <div class="label">AI 助手</div>
-    </a>
+<!-- Bottom Row: OS Distribution + Recent Logins -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
+    <!-- 操作系统分布 -->
+    <div class="mi-card">
+        <div class="mi-card-header">
+            <i class="bi bi-pie-chart" style="color:var(--accent)"></i> 操作系统分布
+        </div>
+        <div class="mi-card-body">
+            {% if os_summary %}
+            {% set total_os = os_summary|sum(attribute='1') %}
+            {% for os, count in os_summary %}
+            <div style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+                    <span>{{ os }}</span>
+                    <span style="color:var(--text-hint)">{{ count }}台 ({{ '%.1f'|format(count/total_os*100) }}%)</span>
+                </div>
+                <div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden">
+                    <div style="height:100%;width:{{ (count/total_os*100)|int }}%;background:var(--accent);border-radius:4px;transition:width 0.6s ease"></div>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align:center;padding:24px;color:var(--text-hint);font-size:14px">
+                <i class="bi bi-bar-chart" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3"></i>
+                暂无数据
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- 最近登录 -->
+    <div class="mi-card">
+        <div class="mi-card-header">
+            <i class="bi bi-clock-history" style="color:var(--accent)"></i> 最近登录
+        </div>
+        <div class="mi-card-body" style="padding:16px">
+            {% if login_logs %}
+            <div style="display:flex;flex-direction:column;gap:6px">
+                {% for log in login_logs %}
+                <div style="display:flex;align-items:center;gap:10px;padding:6px 10px;border-radius:6px;background:var(--bg);font-size:13px">
+                    <div style="width:28px;height:28px;border-radius:50%;background:{% if log.login_type=='normal' %}var(--success){% else %}var(--warning){% endif %};color:white;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                        <strong>{{ log.username or '未知' }}</strong>
+                        {% if log.ip_address %}
+                        <span style="color:var(--text-hint);font-size:12px;margin-left:6px">{{ log.ip_address }}</span>
+                        {% endif %}
+                    </div>
+                    <div style="color:var(--text-hint);font-size:12px;flex-shrink:0">
+                        {{ log.login_time.strftime('%m-%d %H:%M') if log.login_time else '-' }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align:center;padding:24px;color:var(--text-hint);font-size:14px">
+                <i class="bi bi-clock" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3"></i>
+                暂无登录记录
+            </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
-<div class="section-header mt-4">
-    <h5><i class="bi bi-collection"></i>系统模块</h5>
+<!-- System Modules -->
+<div style="font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:16px;display:flex;align-items:center;gap:8px">
+    <i class="bi bi-collection" style="color:var(--accent)"></i> 全部模块
 </div>
-
-<div class="module-grid">
-    <a href="{{ url_for('assets.office_computers') }}" class="module-card">
-        <div class="module-icon c-blue"><i class="bi bi-laptop"></i></div>
-        <div class="module-body">
-            <div class="module-title">办公电脑</div>
-            <div class="module-desc">管理公司IT办公设备</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:32px">
+    <a href="{{ url_for('assets.office_computers') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#0d6efd;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-laptop-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">办公电脑</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">管理公司IT办公设备</div>
         </div>
     </a>
-    <a href="{{ url_for('assets.industrial_computers') }}" class="module-card">
-        <div class="module-icon c-orange"><i class="bi bi-cpu"></i></div>
-        <div class="module-body">
-            <div class="module-title">工控机</div>
-            <div class="module-desc">产线及工业设备管理</div>
+    <a href="{{ url_for('assets.industrial_computers') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#f07427;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-cpu-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">工控机</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">产线及工业设备管理</div>
         </div>
     </a>
-    <a href="{{ url_for('security.index') }}" class="module-card">
-        <div class="module-icon c-yellow"><i class="bi bi-shield-lock"></i></div>
-        <div class="module-body">
-            <div class="module-title">保密管理</div>
-            <div class="module-desc">涉密人/物/区域管控</div>
+    <a href="{{ url_for('security.index') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#ca8a04;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-shield-lock-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">保密管理</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">涉密人/物/区域管控</div>
         </div>
     </a>
-    <a href="{{ url_for('audit.task_list') }}" class="module-card">
-        <div class="module-icon c-green"><i class="bi bi-clipboard-check"></i></div>
-        <div class="module-body">
-            <div class="module-title">稽查管理</div>
-            <div class="module-desc">任务分配与跟踪</div>
+    <a href="{{ url_for('audit.task_list') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#059669;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-clipboard-check-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">稽查管理</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">任务分配与跟踪</div>
         </div>
     </a>
-    <a href="{{ url_for('ai_assistant.ai_assistant') }}" class="module-card">
-        <div class="module-icon c-pink"><i class="bi bi-robot"></i></div>
-        <div class="module-body">
-            <div class="module-title">AI 助手</div>
-            <div class="module-desc">智能数据问答</div>
+    <a href="{{ url_for('ai_assistant.ai_assistant') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#db2777;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-robot"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">AI 助手</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">智能数据问答</div>
         </div>
     </a>
-    {% if current_user.role == 'admin' %}
-    <a href="{{ url_for('admin.users') }}" class="module-card">
-        <div class="module-icon c-purple"><i class="bi bi-gear"></i></div>
-        <div class="module-body">
-            <div class="module-title">系统管理</div>
-            <div class="module-desc">用户/部门/角色管理</div>
+    <a href="{{ url_for('case_management.collections') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#0891b2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-briefcase-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">案件管理</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">案例集 · SOP · 调查报告</div>
         </div>
     </a>
-    {% endif %}
+    <a href="{{ url_for('emergency.plans') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#dc2626;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">应急管理</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">预案 · 演练 · 应急小组</div>
+        </div>
+    </a>
+    <a href="{{ url_for('admin.users') }}" class="mi-card" style="display:flex;align-items:center;gap:14px;padding:14px 18px;text-decoration:none;color:inherit">
+        <div style="width:40px;height:40px;border-radius:10px;background:#7c3aed;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">
+            <i class="bi bi-gear-fill"></i></div>
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary)">系统管理</div>
+            <div style="font-size:12px;color:var(--text-hint);margin-top:2px">用户/部门/角色配置</div>
+        </div>
+    </a>
 </div>
+{% endblock %}
 
+{% block extra_css %}
 <script>
 document.getElementById('liveDate').textContent = new Date().toLocaleDateString('zh-CN', {year:'numeric',month:'long',day:'numeric',weekday:'long'});
 </script>

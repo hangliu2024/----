@@ -1,103 +1,80 @@
-"""测试AI数据问答功能"""
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import requests, re, time, json
 
-from app import app, db
-from app.routes.ai_assistant import generate_sql_v2, execute_sql, get_database_schema, check_if_needs_database_query_v2, smart_retry_query
-import requests
+base = 'http://10.5.192.253:5001'
+s = requests.Session()
 
-# 测试配置 - 请根据你的配置修改
-TEST_CONFIG = {
-    'provider': 'ollama',
-    'api_key': '',
-    'model': 'qwen3.5:9B',
-    'ollama_api_base': 'http://localhost:11434/v1',
-    'openai_api_base': 'https://api.openai.com/v1',
-    'minimax_api_key': ''
-}
+print("=" * 60)
+print("测试AI问答功能")
+print("=" * 60)
 
-def test_query(question):
-    """测试查询"""
-    print(f"\n{'='*60}")
-    print(f"测试问题: {question}")
-    print('='*60)
+# Step 1: Login
+print("\n1. 登录...")
+r = s.get(f'{base}/login')
+token = None
+m = re.search(r'<input[^>]*id="csrf_token"[^>]*value="([^"]+)"', r.text)
+if m:
+    token = m.group(1)
+
+r = s.post(f'{base}/login', data={
+    'csrf_token': token,
+    'email': 'admin@example.com',
+    'password': 'Admin123!',
+}, allow_redirects=True)
+
+if 'dashboard' in r.url:
+    print("   ✅ 登录成功!")
+else:
+    print("   ❌ 登录失败!")
+    exit(1)
+
+# Step 2: Test AI chat API
+print("\n2. 测试AI问答: 帮我列出行政中心厂务工程部所有经理")
+question = "帮我列出行政中心厂务工程部所有经理"
+
+start_time = time.time()
+try:
+    r = s.post(f'{base}/ai_assistant/chat', 
+        json={'message': question},
+        headers={'Content-Type': 'application/json'},
+        timeout=300)
+    elapsed = time.time() - start_time
+    print(f"   状态码: {r.status_code}, 耗时: {elapsed:.1f}秒")
     
-    with app.app_context():
-        # 1. 获取数据库Schema
-        db_schema = get_database_schema()
-        print(f"\n[1] 数据库Schema长度: {len(db_schema)} 字符")
+    if r.status_code == 200:
+        result = r.json()
+        print(f"   success: {result.get('success')}")
+        print(f"   SQL: {result.get('sql', 'N/A')}")
+        print(f"   数据条数: {result.get('data_count', 0)}")
         
-        # 2. 检查是否需要查询数据库
-        need_query = check_if_needs_database_query_v2(question, db_schema, TEST_CONFIG)
-        print(f"\n[2] 是否需要查询数据库: {need_query}")
+        # Print thinking steps
+        steps = result.get('thinking_steps', [])
+        print(f"\n   思考步骤:")
+        for step in steps:
+            status_icon = '✅' if step.get('status') == 'completed' else '❌' if step.get('status') == 'error' else '⏳'
+            result_text = step.get('result', '')
+            if result_text and len(str(result_text)) > 100:
+                result_text = str(result_text)[:100] + '...'
+            print(f"     {status_icon} {step.get('step', '?')}: {result_text}")
         
-        if not need_query:
-            print("  -> 问题不需要查询数据库")
-            return
-        
-        # 3. 生成SQL
-        print(f"\n[3] 正在生成SQL...")
-        sql = generate_sql_v2(question, db_schema, TEST_CONFIG)
-        
-        if sql:
-            print(f"  生成的SQL: {sql}")
-            
-            # 4. 执行SQL
-            print(f"\n[4] 正在执行SQL...")
-            result, error = execute_sql(sql)
-            
-            if result is not None:
-                print(f"  查询成功! 返回 {len(result)} 条记录")
-                if result:
-                    print(f"  第一条数据: {result[0]}")
-                    if len(result) > 1:
-                        print(f"  最后一条数据: {result[-1]}")
-                else:
-                    # 结果为0，尝试智能重试
-                    print(f"  结果为0条，尝试智能重试...")
-                    retry_sql = smart_retry_query(question, sql, db_schema, TEST_CONFIG)
-                    if retry_sql:
-                        print(f"  重试SQL: {retry_sql}")
-                        result, error = execute_sql(retry_sql)
-                        if result and len(result) > 0:
-                            print(f"  重试成功! 返回 {len(result)} 条记录")
-                            print(f"  第一条数据: {result[0]}")
-            else:
-                print(f"  查询失败: {error}")
+        # Print answer
+        response_text = result.get('response', '')
+        if response_text:
+            print(f"\n   AI回答:")
+            print("   " + "-" * 50)
+            for line in response_text.split('\n'):
+                print(f"   {line}")
+            print("   " + "-" * 50)
         else:
-            print("  无法生成SQL")
+            print(f"\n   ❌ 无回答内容")
+            print(f"   error: {result.get('error', 'N/A')}")
+    else:
+        print(f"   ❌ 请求失败: {r.status_code}")
+        print(f"   响应: {r.text[:500]}")
+except requests.exceptions.Timeout:
+    print(f"   ❌ 请求超时 (超过300秒)")
+except Exception as e:
+    print(f"   ❌ 请求异常: {e}")
 
-def test_direct_sql():
-    """直接测试SQL是否正确"""
-    print("\n" + "="*60)
-    print("直接测试SQL执行")
-    print("="*60)
-    
-    with app.app_context():
-        # 测试正确的SQL
-        test_sql = "SELECT COUNT(*) as total FROM employees_info WHERE emp_status = '在职'"
-        print(f"\n测试SQL: {test_sql}")
-        result, error = execute_sql(test_sql)
-        if result:
-            print(f"成功! 结果: {result}")
-        else:
-            print(f"失败: {error}")
-        
-        # 查看employees_info表的数据
-        print("\n查看employees_info表前3条数据:")
-        result, _ = execute_sql("SELECT emp_id, emp_name, emp_status, dept_full_name FROM employees_info LIMIT 3")
-        if result:
-            for row in result:
-                print(f"  {row}")
-        
-        # 查看emp_status的可能值
-        print("\n查看emp_status的所有可能值:")
-        result, _ = execute_sql("SELECT DISTINCT emp_status, COUNT(*) as cnt FROM employees_info GROUP BY emp_status")
-        if result:
-            for row in result:
-                print(f"  {row}")
-
-if __name__ == '__main__':
-    # 测试问答
-    test_query("刘航是谁")
+print("\n" + "=" * 60)
+print("测试完成!")
+print("=" * 60)

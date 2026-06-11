@@ -1,75 +1,68 @@
 {% extends "base.html" %}
-{% block title %}纸质涉密文件{% endblock %}
+{% block title %}纸质文件 - 资产管理系统{% endblock %}
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="card">
-        <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
-            <div class="d-flex justify-content-between align-items-center">
-                <h4 class="mb-0"><i class="bi bi-file-earmark"></i> 纸质涉密文件清单</h4>
-                <div class="btn-group">
-                    <a href="{{ url_for('security.download_paper_document_template') }}" class="btn btn-light btn-sm"><i class="bi bi-download"></i> 下载模板</a>
-                    <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#importModal"><i class="bi bi-upload"></i> 导入</button>
-                    <a href="{{ url_for('security.export_paper_document') }}" class="btn btn-info btn-sm"><i class="bi bi-file-earmark-excel"></i> 导出</a>
-                </div>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead><tr><th>文件编号</th><th>文件标题</th><th>密级</th><th>部门</th><th>责任人</th><th>数量</th><th>存放位置</th><th>状态</th></tr></thead>
-                    <tbody>
-                        {% for item in items %}
-                        <tr>
-                            <td>{{ item.doc_number or '' }}</td>
-                            <td>{{ item.doc_title or '' }}</td>
-                            <td>{{ item.doc_level or '' }}</td>
-                            <td>{{ item.dept_name or '' }}</td>
-                            <td>{{ item.responsible_name or '' }}</td>
-                            <td>{{ item.quantity or '' }}</td>
-                            <td>{{ item.storage_location or '' }}</td>
-                            <td>{{ item.doc_status or '' }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div><h1 class="mi-page-title"><i class="bi bi-file-earmark-text"></i> 纸质文件清单</h1><p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">管理涉密纸质文件及存放信息</p></div>
+    <div class="mi-page-actions">
+        <button type="button" class="mi-btn mi-btn-primary mi-btn-sm" onclick="addItem()"><i class="bi bi-plus-lg"></i> 添加</button>
+        <a href="{{ url_for('security.download_paper_document_template') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-download"></i> 下载模板</a>
+        <button type="button" class="mi-btn mi-btn-info mi-btn-sm" onclick="document.getElementById('importModal').style.display='flex'"><i class="bi bi-upload"></i> 导入</button>
+        <a href="{{ url_for('security.export_paper_document') }}" class="mi-btn mi-btn-success mi-btn-sm"><i class="bi bi-file-earmark-excel"></i> 导出</a>
     </div>
 </div>
-<div class="modal fade" id="importModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">导入纸质文件数据</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body">
-            <form id="importForm" enctype="multipart/form-data">
-                <div class="mb-3"><label for="file" class="form-label">选择Excel文件</label><input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required></div>
-                <div class="alert alert-info"><i class="bi bi-info-circle"></i> 请先下载模板，按模板格式填写数据后上传。</div>
-            </form>
-        </div>
-        <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-primary" onclick="submitImport()">导入</button></div>
-    </div></div>
+<div class="mi-card"><div class="mi-table-wrap" style="border:none;border-radius:0"><table class="mi-table">
+<thead><tr><th>文件编号</th><th>文件标题</th><th>涉密等级</th><th>份数</th><th>页数</th><th>起草人</th><th>持有人</th><th>存放位置</th><th>保管人</th><th>部门</th><th>状态</th><th>操作</th></tr></thead>
+<tbody>
+{% for item in items %}
+<tr>
+    <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:13px">{{ item.doc_id or '-' }}</code></td>
+    <td>{{ item.doc_title or '-' }}</td><td>{{ item.classification or '-' }}</td><td>{{ item.copies or '-' }}</td><td>{{ item.pages or '-' }}</td><td>{{ item.drafter_name or '-' }}</td><td>{{ item.holder_name or '-' }}</td><td>{{ item.storage_location or '-' }}</td><td>{{ item.custodian_name or '-' }}</td><td>{{ item.dept_name or '-' }}</td>
+    <td>{% if item.doc_status == '正常' %}<span class="mi-badge mi-badge-success">{{ item.doc_status }}</span>{% elif item.doc_status == '销毁' %}<span class="mi-badge mi-badge-danger">{{ item.doc_status }}</span>{% else %}<span class="mi-badge mi-badge-default">{{ item.doc_status or '-' }}</span>{% endif %}</td>
+    <td style="white-space:nowrap"><button class="mi-btn mi-btn-info mi-btn-sm" onclick="editItem({{ item.id }})"><i class="bi bi-pencil"></i></button><button class="mi-btn mi-btn-danger mi-btn-sm" onclick="deleteItem({{ item.id }})"><i class="bi bi-trash"></i></button></td>
+</tr>
+{% endfor %}
+{% if not items %}<tr><td colspan="12" style="text-align:center;padding:48px;color:var(--text-hint)"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px"></i>暂无数据</td></tr>{% endif %}
+</tbody></table></div></div>
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+<div style="background:var(--bg-white);border-radius:var(--radius-lg);width:100%;max-width:600px;margin:20px;box-shadow:var(--shadow-lg);max-height:90vh;overflow-y:auto">
+<div style="padding:20px 24px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between"><span style="font-size:16px;font-weight:600" id="editModalTitle"><i class="bi bi-pencil-square" style="color:var(--accent)"></i> 编辑纸质文件</span><button onclick="document.getElementById('editModal').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-hint)">&times;</button></div>
+<form id="editForm" style="padding:24px"><input type="hidden" id="editId">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+<div class="mi-form-group"><label class="mi-label">文件编号</label><input type="text" class="mi-input" id="edit_doc_id" name="doc_id"></div>
+<div class="mi-form-group"><label class="mi-label">文件标题</label><input type="text" class="mi-input" id="edit_doc_title" name="doc_title"></div>
+<div class="mi-form-group"><label class="mi-label">涉密等级</label><input type="text" class="mi-input" id="edit_classification" name="classification"></div>
+<div class="mi-form-group"><label class="mi-label">份数</label><input type="number" class="mi-input" id="edit_copies" name="copies"></div>
+<div class="mi-form-group"><label class="mi-label">页数</label><input type="number" class="mi-input" id="edit_pages" name="pages"></div>
+<div class="mi-form-group"><label class="mi-label">起草人工号</label><input type="text" class="mi-input" id="edit_drafter_id" name="drafter_id"></div>
+<div class="mi-form-group"><label class="mi-label">起草人姓名</label><input type="text" class="mi-input" id="edit_drafter_name" name="drafter_name"></div>
+<div class="mi-form-group"><label class="mi-label">持有工号</label><input type="text" class="mi-input" id="edit_holder_id" name="holder_id"></div>
+<div class="mi-form-group"><label class="mi-label">持有人姓名</label><input type="text" class="mi-input" id="edit_holder_name" name="holder_name"></div>
+<div class="mi-form-group"><label class="mi-label">存放位置</label><input type="text" class="mi-input" id="edit_storage_location" name="storage_location"></div>
+<div class="mi-form-group"><label class="mi-label">保管人工号</label><input type="text" class="mi-input" id="edit_custodian_id" name="custodian_id"></div>
+<div class="mi-form-group"><label class="mi-label">保管人姓名</label><input type="text" class="mi-input" id="edit_custodian_name" name="custodian_name"></div>
+<div class="mi-form-group"><label class="mi-label">部门ID</label><input type="text" class="mi-input" id="edit_dept_id" name="dept_id"></div>
+<div class="mi-form-group"><label class="mi-label">部门名称</label><input type="text" class="mi-input" id="edit_dept_name" name="dept_name"></div>
+<div class="mi-form-group"><label class="mi-label">状态</label><select class="mi-input" id="edit_doc_status" name="doc_status"><option value="正常">正常</option><option value="归档">归档</option><option value="销毁">销毁</option><option value="借阅">借阅</option></select></div>
 </div>
-<div class="modal fade" id="resultModal" tabindex="-1">
-    <div class="modal-dialog"><div class="modal-content">
-        <div class="modal-header"><h5 class="modal-title">导入结果</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-        <div class="modal-body" id="resultContent"></div>
-        <div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">确定</button></div>
-    </div></div>
-</div>
+<div class="mi-form-group" style="margin-top:12px"><label class="mi-label">备注</label><textarea class="mi-input" id="edit_remark" name="remark" rows="2"></textarea></div>
+</form>
+<div style="padding:16px 24px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:8px"><button class="mi-btn mi-btn-default" onclick="document.getElementById('editModal').style.display='none'">取消</button><button class="mi-btn mi-btn-primary" onclick="saveEdit()"><i class="bi bi-check-lg"></i> 保存</button></div>
+</div></div>
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+<div style="background:var(--bg-white);border-radius:var(--radius-lg);width:100%;max-width:480px;margin:20px;box-shadow:var(--shadow-lg)">
+<div style="padding:20px 24px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between"><span style="font-size:16px;font-weight:600"><i class="bi bi-upload" style="color:var(--accent)"></i> 导入纸质文件数据</span><button onclick="closeImportModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-hint)">&times;</button></div>
+<div style="padding:24px"><div class="mi-form-group"><label class="mi-label">选择Excel文件</label><input type="file" class="mi-input" id="importFile" accept=".xlsx,.xls"></div><div id="importResult" style="display:none;margin-top:16px"></div></div>
+<div style="padding:16px 24px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:8px"><button class="mi-btn mi-btn-default" onclick="closeImportModal()">关闭</button><button class="mi-btn mi-btn-primary" id="importBtn" onclick="doImport()"><i class="bi bi-upload"></i> 开始导入</button></div>
+</div></div>
+{% endblock %}
+{% block extra_js %}
 <script>
-function submitImport() {
-    var formData = new FormData(document.getElementById('importForm'));
-    fetch('{{ url_for("security.import_paper_document") }}', { method: 'POST', body: formData })
-    .then(response => response.json())
-    .then(data => {
-        var resultModal = new bootstrap.Modal(document.getElementById('resultModal'));
-        document.getElementById('resultContent').innerHTML = data.success 
-            ? '<div class="alert alert-success"><i class="bi bi-check-circle"></i> ' + data.message + '</div>'
-            : '<div class="alert alert-danger"><i class="bi bi-exclamation-circle"></i> ' + data.message + '</div>';
-        resultModal.show();
-        if (data.success) setTimeout(function() { location.reload(); }, 1500);
-    })
-    .catch(error => alert('导入失败：' + error));
-    bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
-}
+var isAddMode=false;
+function addItem(){isAddMode=true;document.getElementById('editModalTitle').innerHTML='<i class="bi bi-plus-circle" style="color:var(--accent)"></i> 添加纸质文件';document.getElementById('editId').value='';document.getElementById('editForm').reset();document.getElementById('editModal').style.display='flex'}
+function editItem(id){isAddMode=false;document.getElementById('editModalTitle').innerHTML='<i class="bi bi-pencil-square" style="color:var(--accent)"></i> 编辑纸质文件';fetch('{{ url_for("security.get_paper_document",id=0) }}'.replace('/0','/'+id)).then(function(r){return r.json()}).then(function(d){document.getElementById('editId').value=d.id;document.getElementById('edit_doc_id').value=d.doc_id||'';document.getElementById('edit_doc_title').value=d.doc_title||'';document.getElementById('edit_classification').value=d.classification||'';document.getElementById('edit_copies').value=d.copies||'';document.getElementById('edit_pages').value=d.pages||'';document.getElementById('edit_drafter_id').value=d.drafter_id||'';document.getElementById('edit_drafter_name').value=d.drafter_name||'';document.getElementById('edit_holder_id').value=d.holder_id||'';document.getElementById('edit_holder_name').value=d.holder_name||'';document.getElementById('edit_storage_location').value=d.storage_location||'';document.getElementById('edit_custodian_id').value=d.custodian_id||'';document.getElementById('edit_custodian_name').value=d.custodian_name||'';document.getElementById('edit_dept_id').value=d.dept_id||'';document.getElementById('edit_dept_name').value=d.dept_name||'';document.getElementById('edit_doc_status').value=d.doc_status||'';document.getElementById('edit_remark').value=d.remark||'';document.getElementById('editModal').style.display='flex'})}
+function saveEdit(){var fd=new FormData(document.getElementById('editForm'));if(isAddMode){fetch('{{ url_for("security.add_paper_document") }}',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){if(d.success){location.reload()}else{alert(d.message)}})}else{var id=document.getElementById('editId').value;fetch('{{ url_for("security.edit_paper_document",id=0) }}'.replace('/0','/'+id),{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){if(d.success){location.reload()}else{alert(d.message)}})}}
+function deleteItem(id){if(!confirm('确定要删除该记录吗？'))return;fetch('{{ url_for("security.delete_paper_document",id=0) }}'.replace('/0','/'+id),{method:'POST'}).then(function(r){return r.json()}).then(function(d){if(d.success){location.reload()}else{alert(d.message)}})}
+function closeImportModal(){document.getElementById('importModal').style.display='none';document.getElementById('importFile').value='';document.getElementById('importResult').style.display='none'}
+function doImport(){var fi=document.getElementById('importFile');var rd=document.getElementById('importResult');var ib=document.getElementById('importBtn');if(!fi.files.length){alert('请选择文件');return}ib.disabled=true;var fd=new FormData();fd.append('file',fi.files[0]);fetch('{{ url_for("security.import_paper_document") }}',{method:'POST',body:fd}).then(function(r){return r.json()}).then(function(d){ib.disabled=false;rd.style.display='block';if(d.success){rd.innerHTML='<div class="mi-alert mi-alert-success">'+d.message+'</div>';setTimeout(function(){location.reload()},2000)}else{rd.innerHTML='<div class="mi-alert mi-alert-danger">'+d.message+'</div>'}}).catch(function(){ib.disabled=false;rd.style.display='block';rd.innerHTML='<div class="mi-alert mi-alert-danger">导入失败</div>'})}
 </script>
 {% endblock %}

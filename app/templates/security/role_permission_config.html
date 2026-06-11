@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}角色权限配置 - 资产管理系统{% endblock %}
+
+{% block content %}
+<style>
+    .perm-grid { overflow-x: auto; }
+    .perm-table { min-width: 1100px; border-collapse: separate; border-spacing: 0; font-size: 0.8rem; }
+    .perm-table thead th {
+        position: sticky; top: 0; z-index: 2;
+        background: var(--bg); border-bottom: 2px solid var(--border);
+        padding: 10px 8px; font-weight: 600; color: var(--text-secondary);
+        font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .perm-table thead th:first-child { text-align: left; padding-left: 14px; min-width: 130px; }
+    .perm-table tbody td { padding: 6px 8px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .perm-table tbody tr:hover { background: var(--bg); }
+    .role-name { font-weight: 600; color: var(--text); white-space: nowrap; }
+    .role-code { font-size: 0.7rem; color: var(--text-hint); }
+    .perm-toggle {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 28px; height: 28px; border-radius: var(--radius); border: 1.5px solid var(--border);
+        background: var(--white); cursor: pointer; transition: all 0.12s;
+        font-size: 0.7rem; color: var(--text-hint); margin: 1px;
+    }
+    .perm-toggle.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .perm-toggle:hover { border-color: var(--accent); }
+    .perm-group { display: flex; gap: 3px; flex-wrap: wrap; }
+    .perm-label { font-size: 0.65rem; color: var(--text-hint); margin-bottom: 3px; display: block; }
+    .select-all-btn {
+        font-size: 0.7rem; padding: 2px 8px; border-radius: var(--radius);
+        border: 1px solid var(--border); background: var(--white); color: var(--text-secondary);
+        cursor: pointer; transition: all 0.12s;
+    }
+    .select-all-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .save-bar {
+        position: sticky; bottom: 1rem; z-index: 100;
+        display: flex; align-items: center; justify-content: center;
+        padding: 0.75rem; margin-top: 1rem;
+    }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-grid-3x3"></i> 角色权限配置</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">为每个角色配置各模块的增删改查权限</p>
+    </div>
+</div>
+
+<div class="mi-card">
+    <div style="padding:0">
+        <div class="perm-grid">
+            <table class="perm-table w-100">
+                <thead>
+                    <tr>
+                        <th>角色</th>
+                        {% for mod in modules %}
+                        <th style="text-align:center;">
+                            <div>{{ mod.module_name }}</div>
+                            <button class="select-all-btn mt-1" onclick="toggleGroup(this, '{{ mod.id }}', true)">全选</button>
+                            <button class="select-all-btn mt-1" onclick="toggleGroup(this, '{{ mod.id }}', false)" style="margin-left:2px">清空</button>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in roles %}
+                    <tr data-role="{{ role.id }}">
+                        <td>
+                            <div class="role-name">{{ role.role_name }}</div>
+                            <div class="role-code">{{ role.role_code }}</div>
+                        </td>
+                        {% for mod in modules %}
+                        <td style="text-align:center;">
+                            <div class="perm-group">
+                                {% set key = role.id|string + '_' + mod.id|string %}
+                                {% set p = perm_map.get(key, {}) %}
+                                <div>
+                                    <span class="perm-label">看</span>
+                                    <button class="perm-toggle {{ 'on' if p.get('view', 0) else '' }}"
+                                            data-role="{{ role.id }}" data-module="{{ mod.id }}" data-action="view"
+                                            onclick="togglePerm(this)">V</button>
+                                </div>
+                                <div>
+                                    <span class="perm-label">增</span>
+                                    <button class="perm-toggle {{ 'on' if p.get('add', 0) else '' }}"
+                                            data-role="{{ role.id }}" data-module="{{ mod.id }}" data-action="add"
+                                            onclick="togglePerm(this)">A</button>
+                                </div>
+                                <div>
+                                    <span class="perm-label">改</span>
+                                    <button class="perm-toggle {{ 'on' if p.get('edit', 0) else '' }}"
+                                            data-role="{{ role.id }}" data-module="{{ mod.id }}" data-action="edit"
+                                            onclick="togglePerm(this)">E</button>
+                                </div>
+                                <div>
+                                    <span class="perm-label">删</span>
+                                    <button class="perm-toggle {{ 'on' if p.get('delete', 0) else '' }}"
+                                            data-role="{{ role.id }}" data-module="{{ mod.id }}" data-action="delete"
+                                            onclick="togglePerm(this)">D</button>
+                                </div>
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="save-bar">
+    <button class="mi-btn mi-btn-primary" id="saveBtn" onclick="savePermissions()">
+        <i class="bi bi-check-lg"></i> 保存权限配置
+    </button>
+    <span style="font-size:13px;color:var(--success);margin-left:12px;display:none" id="saveStatus"><i class="bi bi-check-circle"></i> 已保存</span>
+</div>
+
+<script>
+let pendingChanges = {};
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta) return meta.getAttribute('content');
+    const match = document.cookie.match(/csrf_token=([^;]+)/);
+    return match ? match[1] : '';
+}
+
+function togglePerm(btn) {
+    btn.classList.toggle('on');
+    let role = btn.dataset.role;
+    let module = btn.dataset.module;
+    let action = btn.dataset.action;
+    let value = btn.classList.contains('on') ? 1 : 0;
+    let key = role + '_' + module;
+    if (!pendingChanges[key]) pendingChanges[key] = {};
+    pendingChanges[key][action] = value;
+    document.getElementById('saveStatus').style.display = 'none';
+}
+
+function toggleGroup(btn, moduleId, turnOn) {
+    let tbody = btn.closest('table').querySelector('tbody');
+    let btns = tbody.querySelectorAll(`button[data-module="${moduleId}"]`);
+    btns.forEach(b => {
+        if (turnOn) b.classList.add('on');
+        else b.classList.remove('on');
+        let role = b.dataset.role;
+        let action = b.dataset.action;
+        let value = b.classList.contains('on') ? 1 : 0;
+        let key = role + '_' + moduleId;
+        if (!pendingChanges[key]) pendingChanges[key] = {};
+        pendingChanges[key][action] = value;
+    });
+    document.getElementById('saveStatus').style.display = 'none';
+}
+
+function savePermissions() {
+    let items = [];
+    for (let [key, actions] of Object.entries(pendingChanges)) {
+        let [role_id, module_id] = key.split('_');
+        items.push({ role_id: parseInt(role_id), module_id: parseInt(module_id), actions: actions });
+    }
+    if (items.length === 0) return;
+
+    let btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:6px"></span>保存中...';
+
+    fetch('{{ url_for("security.permissions_batch_save") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+        body: JSON.stringify({ permissions: items })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            pendingChanges = {};
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> 保存权限配置';
+            btn.disabled = false;
+            let status = document.getElementById('saveStatus');
+            status.style.display = 'inline';
+            setTimeout(() => status.style.display = 'none', 3000);
+        } else {
+            alert('保存失败: ' + data.message);
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> 保存权限配置';
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        alert('网络错误: ' + err);
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> 保存权限配置';
+        btn.disabled = false;
+    });
+}
+</script>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+{% endblock %}

@@ -1,274 +1,184 @@
 {% extends "base.html" %}
 
-{% block title %}工控机管理{% endblock %}
+{% block title %}工控机管理 - 资产管理系统{% endblock %}
 
 {% block content %}
-<style>
-    .compact-table {
-        font-size: 0.85rem;
-    }
-    .compact-table thead th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 600;
-        padding: 10px 8px;
-        border: none;
-        white-space: nowrap;
-    }
-    .compact-table tbody td {
-        padding: 8px;
-        vertical-align: middle;
-        border-color: #e3e3e3;
-    }
-    .compact-table tbody tr:hover {
-        background-color: #f8f9ff;
-    }
-    .search-box {
-        border-radius: 20px;
-        border: 2px solid #e0e0e0;
-        padding: 8px 16px;
-        transition: all 0.3s;
-    }
-    .search-box:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    .btn-search {
-        border-radius: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        padding: 8px 20px;
-    }
-    .card-header-custom {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
-        color: white;
-        border-radius: 12px 12px 0 0;
-        padding: 20px 25px;
-    }
-</style>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-cpu"></i> 工控机管理</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">查看和管理公司工控机设备</p>
+    </div>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('assets.download_industrial_template') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-download"></i> 下载模板</a>
+        <button type="button" class="mi-btn mi-btn-info mi-btn-sm" onclick="document.getElementById('importModal').style.display='flex'"><i class="bi bi-upload"></i> 导入</button>
+        <a href="{{ url_for('assets.export_industrial_computers', search=search) }}" class="mi-btn mi-btn-success mi-btn-sm"><i class="bi bi-file-earmark-excel"></i> 导出</a>
+    </div>
+</div>
 
-<div class="container-fluid py-4">
-    <div class="card">
-        <div class="card-header card-header-custom">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="mb-1"><i class="bi bi-cpu"></i> 工控机管理</h4>
-                    <p class="mb-0 opacity-75">查看和管理公司工控机设备</p>
-                </div>
+<div class="mi-card">
+    <div class="mi-card-body" style="padding-bottom:16px">
+        <form class="mi-toolbar" method="GET" action="{{ url_for('assets.industrial_computers') }}">
+            <div class="mi-search">
+                <i class="bi bi-search"></i>
+                <input class="mi-input" type="search" placeholder="搜索设备名称、IP地址、部门..." name="search" value="{{ search or '' }}">
             </div>
+            <div style="display:flex;gap:8px">
+                <button class="mi-btn mi-btn-primary mi-btn-sm" type="submit"><i class="bi bi-search"></i> 搜索</button>
+                {% if search %}
+                <a href="{{ url_for('assets.industrial_computers') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-x-lg"></i> 清除</a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    
+    <div class="mi-table-wrap" style="border:none;border-radius:0">
+        <table class="mi-table">
+            <thead>
+                <tr>
+                    <th style="width:50px;text-align:center">#</th>
+                    <th>区域</th>
+                    <th>BU部门</th>
+                    <th>工厂</th>
+                    <th>设备名称</th>
+                    <th>位置/工序</th>
+                    <th>操作系统</th>
+                    <th>IP地址</th>
+                    <th>MAC地址</th>
+                    <th>第三方杀毒</th>
+                    <th>IEP安装</th>
+                    <th style="text-align:center;width:80px">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td style="text-align:center;color:var(--text-hint)">{{ item.seq_no or loop.index }}</td>
+                    <td>{{ item.zone or '-' }}</td>
+                    <td>{{ item.bu_dept or '-' }}</td>
+                    <td>{{ item.factory or '-' }}</td>
+                    <td><span style="font-weight:500">{{ item.device_name or '-' }}</span></td>
+                    <td>{{ item.location or '-' }}</td>
+                    <td>{{ item.operating_system or '-' }}</td>
+                    <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:13px">{{ item.ip_address[:20] if item.ip_address else '-' }}</code></td>
+                    <td><span style="font-family:monospace;font-size:13px;color:var(--text-secondary)">{{ item.mac_address[:20] if item.mac_address else '-' }}</span></td>
+                    <td>
+                        {% if item.third_party_antivirus == '是' %}
+                        <span class="mi-badge mi-badge-success">是</span>
+                        {% elif item.third_party_antivirus == '否' %}
+                        <span class="mi-badge mi-badge-warning">否</span>
+                        {% else %}
+                        <span class="mi-badge mi-badge-default">{{ item.third_party_antivirus or '-' }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.iep_installed == '是' %}
+                        <span class="mi-badge mi-badge-success">是</span>
+                        {% elif item.iep_installed == '否' %}
+                        <span class="mi-badge mi-badge-warning">否</span>
+                        {% else %}
+                        <span class="mi-badge mi-badge-default">{{ item.iep_installed or '-' }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center">
+                        <div class="mi-btn-group" style="justify-content:center">
+                            <a href="{{ url_for('assets.industrial_computers') }}?search={{ item.device_name or '' }}" class="mi-btn mi-btn-ghost mi-btn-sm" title="查看"><i class="bi bi-eye"></i> 查看</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not items %}
+                <tr>
+                    <td colspan="12" style="text-align:center;padding:48px;color:var(--text-hint)">
+                        <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px"></i>
+                        暂无数据
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if pagination.pages > 1 %}
+    <div style="padding:16px 24px">
+        <div class="mi-pagination">
+            <a class="mi-page-link" href="{{ url_for('assets.industrial_computers', page=1, search=search) }}">首页</a>
+            <a class="mi-page-link {{ '' if pagination.has_prev else 'disabled' }}" href="{{ url_for('assets.industrial_computers', page=pagination.prev_num if pagination.has_prev else 1, search=search) }}">上一页</a>
+            {% set start = [1, pagination.page - 2]|max %}
+            {% set end = [pagination.pages, pagination.page + 2]|min %}
+            {% for p in range(start, end + 1) %}
+            <span class="{{ 'mi-page-active' if p == pagination.page else '' }}"><a class="mi-page-link" href="{{ url_for('assets.industrial_computers', page=p, search=search) }}">{{ p }}</a></span>
+            {% endfor %}
+            <a class="mi-page-link {{ '' if pagination.has_next else 'disabled' }}" href="{{ url_for('assets.industrial_computers', page=pagination.next_num if pagination.has_next else pagination.pages, search=search) }}">下一页</a>
+            <a class="mi-page-link" href="{{ url_for('assets.industrial_computers', page=pagination.pages, search=search) }}">末页</a>
         </div>
-        
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <form class="d-flex" method="GET" action="{{ url_for('assets.industrial_computers') }}">
-                    <input class="form-control search-box me-2" type="search" placeholder="搜索设备名称、IP地址、部门..." name="search" value="{{ search or '' }}">
-                    <button class="btn btn-search" type="submit"><i class="bi bi-search"></i> 搜索</button>
-                </form>
-                <div class="btn-group">
-                    <a href="{{ url_for('assets.download_industrial_template') }}" class="btn btn-outline-primary">
-                        <i class="bi bi-download"></i> 下载模板
-                    </a>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importModal">
-                        <i class="bi bi-upload"></i> 导入
-                    </button>
-                    <a href="{{ url_for('assets.export_industrial_computers', search=search) }}" class="btn btn-success">
-                        <i class="bi bi-file-earmark-excel"></i> 导出
-                    </a>
-                </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Import Modal -->
+<div id="importModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px)">
+    <div style="background:var(--bg-white);border-radius:var(--radius-lg);width:100%;max-width:480px;margin:20px;box-shadow:var(--shadow-lg)">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:16px;font-weight:600"><i class="bi bi-upload" style="color:var(--accent)"></i> 导入工控机数据</span>
+            <button onclick="closeImportModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-hint)">&times;</button>
+        </div>
+        <div style="padding:24px">
+            <div class="mi-form-group">
+                <label class="mi-label">选择Excel文件</label>
+                <input type="file" class="mi-input" id="importFile" accept=".xlsx,.xls">
+                <p style="font-size:13px;color:var(--text-hint);margin-top:6px">支持 .xlsx 或 .xls 格式，请先下载模板填写数据</p>
             </div>
-            
-            <div class="table-responsive">
-                <table class="table table-hover compact-table mb-0">
-                    <thead>
-                        <tr>
-                            <th class="text-center" style="width: 50px;">序号</th>
-                            <th>区域</th>
-                            <th>BU部门</th>
-                            <th>工厂</th>
-                            <th>设备名称</th>
-                            <th>位置/工序</th>
-                            <th>操作系统</th>
-                            <th>IP地址</th>
-                            <th>MAC地址</th>
-                            <th>第三方杀毒</th>
-                            <th>IEP安装</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in items %}
-                        <tr>
-                            <td class="text-center text-muted">{{ item.seq_no or loop.index }}</td>
-                            <td>{{ item.zone or '' }}</td>
-                            <td>{{ item.bu_dept or '' }}</td>
-                            <td>{{ item.factory or '' }}</td>
-                            <td><div class="d-flex align-items-center"><i class="bi bi-cpu text-primary me-2"></i><span class="fw-medium">{{ item.device_name or '' }}</span></div></td>
-                            <td>{{ item.location or '' }}</td>
-                            <td>{{ item.operating_system or '' }}</td>
-                            <td><code class="bg-light px-2 py-1 rounded">{{ item.ip_address[:20] if item.ip_address else '' }}</code></td>
-                            <td><small class="text-muted font-monospace">{{ item.mac_address[:20] if item.mac_address else '' }}</small></td>
-                            <td>
-                                {% if item.third_party_antivirus == '是' %}
-                                <span class="badge bg-success">是</span>
-                                {% elif item.third_party_antivirus == '否' %}
-                                <span class="badge bg-warning text-dark">否</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ item.third_party_antivirus or '' }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if item.iep_installed == '是' %}
-                                <span class="badge bg-success">是</span>
-                                {% elif item.iep_installed == '否' %}
-                                <span class="badge bg-warning text-dark">否</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ item.iep_installed or '' }}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            
-            {% if pagination.pages > 1 %}
-            <nav aria-label="分页导航" class="mt-3">
-                <ul class="pagination justify-content-center flex-wrap">
-                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=1, search=search) }}">首页</a>
-                    </li>
-                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=pagination.prev_num if pagination.has_prev else 1, search=search) }}">上一页</a>
-                    </li>
-                    {% set start = [1, pagination.page - 2]|max %}
-                    {% set end = [pagination.pages, pagination.page + 2]|min %}
-                    {% for p in range(start, end + 1) %}
-                    <li class="page-item {{ 'active' if p == pagination.page else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=p, search=search) }}">{{ p }}</a>
-                    </li>
-                    {% endfor %}
-                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=pagination.next_num if pagination.has_next else pagination.pages, search=search) }}">下一页</a>
-                    </li>
-                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.industrial_computers', page=pagination.pages, search=search) }}">末页</a>
-                    </li>
-                </ul>
-            </nav>
-            {% endif %}
+            <div id="importResult" style="display:none;margin-top:16px"></div>
+        </div>
+        <div style="padding:16px 24px;border-top:1px solid var(--border-light);display:flex;justify-content:flex-end;gap:8px">
+            <button class="mi-btn mi-btn-default" onclick="closeImportModal()">关闭</button>
+            <button class="mi-btn mi-btn-primary" id="importBtn" onclick="doImport()"><i class="bi bi-upload"></i> 开始导入</button>
         </div>
     </div>
 </div>
 
-<!-- 导入模态框 -->
-<div class="modal fade" id="importModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-upload"></i> 导入工控机数据</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="importForm" enctype="multipart/form-data">
-                    <div class="mb-3">
-                        <label for="importFile" class="form-label">选择Excel文件</label>
-                        <input type="file" class="form-control" id="importFile" name="file" accept=".xlsx,.xls" required>
-                        <div class="form-text">支持 .xlsx 或 .xls 格式，请先下载模板填写数据</div>
-                    </div>
-                </form>
-                
-                <div id="importResult" class="d-none">
-                    <hr>
-                    <div id="resultContent"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                <button type="button" class="btn btn-primary" id="importBtn" onclick="doImport()">
-                    <span class="spinner-border spinner-border-sm d-none" id="importSpinner"></span>
-                    <i class="bi bi-upload"></i> 开始导入
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
+{% block extra_js %}
 <script>
-function doImport() {
-    const fileInput = document.getElementById('importFile');
-    const resultDiv = document.getElementById('importResult');
-    const resultContent = document.getElementById('resultContent');
-    const spinner = document.getElementById('importSpinner');
-    const importBtn = document.getElementById('importBtn');
-    
-    if (!fileInput.files.length) {
-        alert('请选择文件');
-        return;
-    }
-    
-    spinner.classList.remove('d-none');
-    importBtn.disabled = true;
-    
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    
-    fetch('{{ url_for("assets.import_industrial_computers") }}', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        spinner.classList.add('d-none');
-        importBtn.disabled = false;
-        resultDiv.classList.remove('d-none');
-        
-        if (data.success) {
-            resultContent.innerHTML = `
-                <div class="alert alert-success mb-0">
-                    <i class="bi bi-check-circle"></i> ${data.message}
-                </div>
-                <ul class="mt-2 mb-0 small">
-                    <li>成功导入: ${data.success_count} 条</li>
-                    <li>跳过(已存在): ${data.skip_count} 条</li>
-                    ${data.error_count > 0 ? '<li class="text-danger">失败: ' + data.error_count + ' 条</li>' : ''}
-                </ul>
-            `;
-            
-            if (data.errors && data.errors.length > 0) {
-                resultContent.innerHTML += `
-                    <div class="mt-2">
-                        <strong>错误详情:</strong>
-                        <ul class="text-danger small mb-0">
-                            ${data.errors.map(e => '<li>' + e + '</li>').join('')}
-                        </ul>
-                    </div>
-                `;
-            }
-            
-            setTimeout(() => { location.reload(); }, 2000);
-        } else {
-            resultContent.innerHTML = `
-                <div class="alert alert-danger mb-0">
-                    <i class="bi bi-exclamation-triangle"></i> ${data.message}
-                </div>
-            `;
-        }
-    })
-    .catch(error => {
-        spinner.classList.add('d-none');
-        importBtn.disabled = false;
-        resultDiv.classList.remove('d-none');
-        resultContent.innerHTML = `
-            <div class="alert alert-danger mb-0">
-                <i class="bi bi-exclamation-triangle"></i> 导入失败: ${error}
-            </div>
-        `;
-    });
+function closeImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+    document.getElementById('importFile').value = '';
+    document.getElementById('importResult').style.display = 'none';
 }
 
-document.getElementById('importModal').addEventListener('hidden.bs.modal', function () {
-    document.getElementById('importForm').reset();
-    document.getElementById('importResult').classList.add('d-none');
-});
+function doImport() {
+    var fileInput = document.getElementById('importFile');
+    var resultDiv = document.getElementById('importResult');
+    var importBtn = document.getElementById('importBtn');
+    
+    if (!fileInput.files.length) { alert('请选择文件'); return; }
+    
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<span class="mi-spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></span> 导入中...';
+    
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    fetch('{{ url_for("assets.import_industrial_computers") }}', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<i class="bi bi-upload"></i> 开始导入';
+        resultDiv.style.display = 'block';
+        
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="mi-alert mi-alert-success"><i class="bi bi-check-circle-fill"></i> ' + data.message + '</div><div style="font-size:14px;color:var(--text-secondary);margin-top:8px">成功: ' + data.success_count + ' 条 | 跳过: ' + data.skip_count + ' 条' + (data.error_count > 0 ? ' | 失败: ' + data.error_count + ' 条' : '') + '</div>';
+            setTimeout(function() { location.reload(); }, 2000);
+        } else {
+            resultDiv.innerHTML = '<div class="mi-alert mi-alert-danger"><i class="bi bi-exclamation-circle-fill"></i> ' + data.message + '</div>';
+        }
+    })
+    .catch(function(error) {
+        importBtn.disabled = false;
+        importBtn.innerHTML = '<i class="bi bi-upload"></i> 开始导入';
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div class="mi-alert mi-alert-danger"><i class="bi bi-exclamation-circle-fill"></i> 导入失败: ' + error + '</div>';
+    });
+}
 </script>
+{% endblock %}
 {% endblock %}

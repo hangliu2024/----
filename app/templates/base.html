@@ -3,278 +3,844 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}资产管理系统{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>{% block title %}信息资产管理系统{% endblock %}</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-icons.css') }}">
     <style>
+        /* ===== Xiaomi-style Design System ===== */
         :root {
-            --primary-color: #1a365d;
-            --primary-light: #2c5282;
-            --primary-dark: #1a202c;
-            --accent-color: #3182ce;
-            --success-color: #38a169;
-            --warning-color: #d69e2e;
-            --danger-color: #c53030;
-            --info-color: #3182ce;
-            --gray-50: #f7fafc;
-            --gray-100: #edf2f7;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e0;
-            --gray-600: #718096;
-            --gray-800: #2d3748;
+            --bg: #f5f5f5;
+            --bg-white: #ffffff;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --text-hint: #999999;
+            --accent: #ff6700;
+            --accent-hover: #e55d00;
+            --accent-light: rgba(255, 103, 0, 0.08);
+            --success: #52c41a;
+            --warning: #faad14;
+            --danger: #ff4d4f;
+            --info: #1890ff;
+            --border: #e8e8e8;
+            --border-light: #f0f0f0;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.08);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --radius-lg: 16px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            font-family: 'Segoe UI', 'Microsoft YaHei', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--gray-100);
+            font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
             min-height: 100vh;
-            color: var(--gray-800);
         }
-        
-        header {
-            background: var(--primary-color);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            position: relative;
+
+        /* ===== Navigation ===== */
+        .mi-nav {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-light);
+            position: sticky;
+            top: 0;
             z-index: 1000;
+            backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.92);
         }
         
-        .navbar-brand { font-weight: 600; font-size: 1.25rem; letter-spacing: 0.5px; }
+        .mi-nav .container {
+            max-width: 1400px;
+            display: flex;
+            align-items: center;
+            height: 56px;
+            gap: 32px;
+        }
         
-        .nav-link {
+        .mi-brand {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .mi-brand i { color: var(--accent); font-size: 20px; }
+        
+        .mi-nav-collapse {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            gap: 8px;
+        }
+        
+        .mi-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex: 1;
+            overflow: visible;
+        }
+        
+        .mi-nav-item {
+            position: relative;
+        }
+        
+        .mi-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            font-size: 14px;
             font-weight: 500;
-            padding: 0.75rem 1rem !important;
-            border-radius: 4px;
-            transition: background-color 0.2s ease;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            white-space: nowrap;
+            transition: var(--transition);
         }
         
-        .nav-link:hover { background: rgba(255, 255, 255, 0.1); }
+        .mi-nav-link:hover,
+        .mi-nav-link.active {
+            color: var(--accent);
+            background: var(--accent-light);
+        }
         
-        .dropdown-menu {
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            background: white;
+        .mi-nav-link i { font-size: 16px; }
+        
+        /* Dropdown */
+        .mi-dropdown {
+            position: relative;
+        }
+        
+        .mi-dropdown-menu {
             position: absolute;
-            z-index: 9999 !important;
-            margin-top: 0.25rem;
+            top: calc(100% + 6px);
+            left: 0;
+            min-width: 180px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 6px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: var(--transition);
+            z-index: 9999;
         }
         
-        .dropdown-item {
-            padding: 0.625rem 1rem;
-            font-weight: 500;
-            transition: background-color 0.2s ease;
+        .mi-dropdown:hover .mi-dropdown-menu,
+        .mi-dropdown.open .mi-dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
         }
         
-        .dropdown-item:hover { background: var(--gray-100); color: var(--accent-color); }
-        .dropdown-item i { width: 20px; text-align: center; margin-right: 8px; color: var(--gray-600); }
-        .dropdown-item:hover i { color: var(--accent-color); }
-        
-        main {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-top: 1.5rem;
-            margin-bottom: 1.5rem;
+        .mi-dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            font-size: 14px;
+            color: var(--text-primary);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
         }
         
-        .alert { border: none; border-radius: 6px; padding: 0.875rem 1.25rem; font-weight: 500; }
-        .alert-success { background: #c6f6d5; color: #276749; }
-        .alert-info { background: #bee3f8; color: #2b6cb0; }
-        .alert-warning { background: #fefcbf; color: #975a16; }
-        .alert-danger { background: #fed7d7; color: #c53030; }
-        
-        .card {
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-            background: white;
+        .mi-dropdown-item:hover {
+            background: var(--bg);
+            color: var(--accent);
         }
         
-        .card-header {
-            background: var(--gray-50);
-            border-bottom: 1px solid var(--gray-200);
-            padding: 1rem 1.25rem;
-            font-weight: 600;
-            font-size: 1rem;
+        .mi-dropdown-item i {
+            font-size: 16px;
+            color: var(--text-hint);
+            width: 20px;
+            text-align: center;
         }
         
-        .card-body { padding: 1.25rem; }
+        .mi-dropdown-item:hover i { color: var(--accent); }
         
-        .btn {
+        .mi-dropdown-divider {
+            height: 1px;
+            background: var(--border-light);
+            margin: 4px 8px;
+        }
+        
+        .mi-nav-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+            margin-left: auto;
+        }
+        
+        .mi-nav-user-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .mi-nav-user-text i { color: var(--text-hint); }
+        
+        .mi-nav-logout {
+            font-size: 14px;
+            color: var(--text-hint);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+        
+        .mi-nav-logout:hover {
+            color: var(--danger);
+            background: rgba(255,77,79,0.06);
+        }
+        
+        /* Mobile toggler */
+        .mi-toggler {
+            display: none;
+            background: none;
             border: none;
-            border-radius: 6px;
-            padding: 0.5rem 1rem;
+            font-size: 22px;
+            color: var(--text-primary);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+        .mi-toggler:hover { background: var(--bg); }
+
+        /* ===== Main Content ===== */
+        .mi-main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 20px 40px;
+            min-height: calc(100vh - 56px - 60px);
+        }
+
+        /* ===== Flash Messages ===== */
+        .mi-alert {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 14px;
             font-weight: 500;
-            transition: all 0.2s ease;
+            margin-bottom: 16px;
+            animation: slideDown 0.3s ease;
         }
         
-        .btn-primary { background: var(--primary-color); }
-        .btn-primary:hover { background: var(--primary-light); }
-        .btn-success { background: var(--success-color); }
-        .btn-success:hover { background: #2f855a; }
-        .btn-info { background: var(--info-color); }
-        .btn-info:hover { background: #2b6cb0; }
-        .btn-warning { background: var(--warning-color); }
-        .btn-warning:hover { background: #b7791f; }
-        .btn-danger { background: var(--danger-color); }
-        .btn-danger:hover { background: #9b2c2c; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         
-        .btn-outline-primary { border: 1px solid var(--primary-color); color: var(--primary-color); background: transparent; }
-        .btn-outline-primary:hover { background: var(--primary-color); color: white; }
-        .btn-outline-secondary { border: 1px solid var(--gray-300); color: var(--gray-600); background: transparent; }
-        .btn-outline-secondary:hover { background: var(--gray-100); color: var(--gray-800); }
+        .mi-alert-success { background: #f0faf0; color: #1a7a1a; border: 1px solid #d4f0d4; }
+        .mi-alert-info { background: #f0f7ff; color: #0d6efd; border: 1px solid #d0e4ff; }
+        .mi-alert-warning { background: #fffbe6; color: #ad6800; border: 1px solid #fff1b8; }
+        .mi-alert-danger { background: #fff2f0; color: #cf1322; border: 1px solid #ffccc7; }
         
-        .table { border: 1px solid var(--gray-200); border-radius: 8px; overflow: hidden; }
-        .table thead { background: var(--gray-50); }
-        .table thead th {
-            border-bottom: 2px solid var(--gray-200);
-            padding: 0.875rem 1rem;
+        .mi-alert-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: var(--transition);
+            color: inherit;
+        }
+        .mi-alert-close:hover { opacity: 1; }
+
+        /* ===== Cards ===== */
+        .mi-card {
+            background: var(--bg-white);
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+        
+        .mi-card:hover { box-shadow: var(--shadow-md); }
+        
+        .mi-card-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-light);
+            font-size: 15px;
             font-weight: 600;
-            color: var(--gray-800);
-            font-size: 0.875rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
-        .table tbody tr { transition: background-color 0.2s ease; }
-        .table tbody tr:hover { background: var(--gray-50); }
-        .table tbody td { padding: 0.875rem 1rem; vertical-align: middle; border-color: var(--gray-200); }
         
-        .form-control {
-            border: 1px solid var(--gray-300);
-            border-radius: 6px;
-            padding: 0.5rem 0.75rem;
-            transition: all 0.2s ease;
+        .mi-card-body { padding: 24px; }
+
+        /* ===== Tables ===== */
+        .mi-table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-light);
         }
-        .form-control:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1); }
         
-        .form-label { font-weight: 500; color: var(--gray-800); margin-bottom: 0.375rem; font-size: 0.875rem; }
+        .mi-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
         
-        .form-select { border: 1px solid var(--gray-300); border-radius: 6px; padding: 0.5rem 0.75rem; }
-        .form-select:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1); }
+        .mi-table th {
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-hint);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            white-space: nowrap;
+        }
         
-        .form-check-input:checked { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .mi-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
         
-        footer { text-align: center; padding: 1.5rem; color: var(--gray-600); margin-top: auto; font-size: 0.875rem; }
+        .mi-table tbody tr { transition: var(--transition); }
+        .mi-table tbody tr:hover { background: var(--accent-light); }
+        .mi-table tbody tr:last-child td { border-bottom: none; }
+
+        /* ===== Buttons ===== */
+        .mi-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            white-space: nowrap;
+            line-height: 1.5;
+        }
         
-        .badge { font-weight: 500; padding: 0.35rem 0.65rem; border-radius: 4px; }
-        .badge.bg-success { background: var(--success-color) !important; }
-        .badge.bg-primary { background: var(--primary-color) !important; }
-        .badge.bg-danger { background: var(--danger-color) !important; }
-        .badge.bg-warning { background: var(--warning-color) !important; }
-        .badge.bg-info { background: var(--info-color) !important; }
-        .badge.bg-secondary { background: var(--gray-600) !important; }
+        .mi-btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+        .mi-btn-primary:hover {
+            background: var(--accent-hover);
+            color: white;
+            box-shadow: 0 4px 12px rgba(255,103,0,0.3);
+        }
         
-        .page-link { color: var(--primary-color); border: 1px solid var(--gray-200); }
-        .page-link:hover { background: var(--gray-100); color: var(--primary-light); }
-        .page-item.active .page-link { background: var(--primary-color); border-color: var(--primary-color); }
+        .mi-btn-default {
+            background: var(--bg-white);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        .mi-btn-default:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        
+        .mi-btn-success { background: var(--success); color: white; }
+        .mi-btn-success:hover { background: #46a617; color: white; }
+        
+        .mi-btn-danger { background: var(--danger); color: white; }
+        .mi-btn-danger:hover { background: #e04347; color: white; }
+        
+        .mi-btn-warning { background: var(--warning); color: white; }
+        .mi-btn-warning:hover { background: #e09a13; color: white; }
+        
+        .mi-btn-info { background: var(--info); color: white; }
+        .mi-btn-info:hover { background: #1480e6; color: white; }
+        
+        .mi-btn-ghost {
+            background: var(--bg);
+            color: var(--accent);
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+        }
+        .mi-btn-ghost:hover { background: var(--accent-light); color: var(--accent); }
+        
+        .mi-btn-sm { padding: 5px 14px; font-size: 13px; }
+        .mi-btn-lg { padding: 12px 28px; font-size: 15px; }
+
+        .mi-btn-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ===== Forms ===== */
+        .mi-input {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-white);
+            color: var(--text-primary);
+            transition: var(--transition);
+            outline: none;
+        }
+        
+        .mi-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(255,103,0,0.1);
+        }
+        
+        .mi-input::placeholder { color: var(--text-hint); }
+        
+        .mi-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 36px;
+        }
+        
+        .mi-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        
+        .mi-form-group { margin-bottom: 20px; }
+        
+        .mi-textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        /* ===== Badges ===== */
+        .mi-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 10px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+        
+        .mi-badge-success { background: #f0faf0; color: #1a7a1a; }
+        .mi-badge-warning { background: #fffbe6; color: #ad6800; }
+        .mi-badge-danger { background: #fff2f0; color: #cf1322; }
+        .mi-badge-info { background: #f0f7ff; color: #0d6efd; }
+        .mi-badge-primary { background: var(--accent-light); color: var(--accent); }
+        .mi-badge-default { background: var(--bg); color: var(--text-hint); }
+
+        /* ===== Pagination ===== */
+        .mi-pagination {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 24px;
+        }
+        
+        .mi-page-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 36px;
+            height: 36px;
+            padding: 0 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+        }
+        
+        .mi-page-link:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        
+        .mi-page-active .mi-page-link {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        /* ===== Stats Cards ===== */
+        .mi-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        
+        .mi-stat-card {
+            background: var(--bg-white);
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            border: 1px solid var(--border-light);
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .mi-stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            border-radius: 0 2px 2px 0;
+        }
+        
+        .mi-stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+        .mi-stat-card.accent::after { background: var(--accent); }
+        .mi-stat-card.success::after { background: var(--success); }
+        .mi-stat-card.warning::after { background: var(--warning); }
+        .mi-stat-card.danger::after { background: var(--danger); }
+        .mi-stat-card.info::after { background: var(--info); }
+        
+        .mi-stat-label {
+            font-size: 13px;
+            color: var(--text-hint);
+            margin-bottom: 8px;
+        }
+        
+        .mi-stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+        
+        .mi-stat-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 40px;
+            opacity: 0.08;
+            color: var(--text-primary);
+        }
+
+        /* ===== Loading ===== */
+        .mi-loading {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(255,255,255,0.8);
+            z-index: 10000;
+            backdrop-filter: blur(4px);
+        }
+        
+        .mi-loading.show { display: flex; align-items: center; justify-content: center; }
+        
+        .mi-spinner {
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== Footer ===== */
+        .mi-footer {
+            text-align: center;
+            padding: 16px 20px;
+            color: var(--text-hint);
+            font-size: 13px;
+            border-top: 1px solid var(--border-light);
+            background: var(--bg-white);
+        }
+
+        /* ===== Toast ===== */
+        .mi-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10001;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 992px) {
+            .mi-nav .container { gap: 16px; }
+            .mi-nav-links { gap: 2px; }
+            .mi-nav-link { padding: 8px 10px; font-size: 13px; }
+        }
         
         @media (max-width: 768px) {
-            main { border-radius: 0; margin: 0; padding: 1rem; }
-            .card { margin-bottom: 1rem; }
+            .mi-toggler { display: block; }
+            
+            .mi-nav-collapse {
+                display: none;
+                position: absolute;
+                top: 56px;
+                left: 0;
+                right: 0;
+                background: var(--bg-white);
+                border-bottom: 1px solid var(--border-light);
+                box-shadow: var(--shadow-lg);
+                padding: 12px;
+                z-index: 999;
+            }
+            
+            .mi-nav-collapse.show { display: block; }
+            
+            .mi-nav-links {
+                flex-direction: column;
+                gap: 2px;
+            }
+            
+            .mi-dropdown-menu {
+                position: static;
+                box-shadow: none;
+                border: none;
+                padding-left: 20px;
+                opacity: 1;
+                visibility: visible;
+                transform: none;
+                display: none;
+            }
+            
+            .mi-nav-user {
+                flex-direction: column;
+                gap: 8px;
+                padding-top: 12px;
+                border-top: 1px solid var(--border-light);
+                margin-top: 8px;
+            }
+            
+            .mi-main { padding: 16px 12px 32px; }
+            .mi-stats { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .mi-stat-card { padding: 14px 16px; }
+            .mi-stat-value { font-size: 22px; }
+            .mi-card-body { padding: 16px; }
+            .mi-table th, .mi-table td { padding: 10px 12px; font-size: 13px; }
         }
         
-        .container { max-width: 1400px !important; }
+        @media (max-width: 576px) {
+            .mi-stats { grid-template-columns: 1fr; }
+            .mi-main { padding: 12px 8px 24px; }
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            .mi-nav, .mi-footer, .mi-loading { display: none !important; }
+            .mi-main { padding: 0; }
+            .mi-card { box-shadow: none; border: 1px solid #ddd; }
+        }
+
+        /* ===== Sidebar-like page header ===== */
+        .mi-page-header {
+            margin-bottom: 24px;
+        }
         
-        .card-header.bg-primary { background: var(--primary-color) !important; }
-        .card-header.bg-success { background: var(--success-color) !important; }
-        .card-header.bg-info { background: var(--info-color) !important; }
-        .card-header.bg-warning { background: var(--warning-color) !important; }
-        .card-header.bg-danger { background: var(--danger-color) !important; }
+        .mi-page-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         
-        .stats-card { border-left: 4px solid var(--primary-color); }
-        .stats-card.stats-success { border-left-color: var(--success-color); }
-        .stats-card.stats-warning { border-left-color: var(--warning-color); }
-        .stats-card.stats-danger { border-left-color: var(--danger-color); }
-        .stats-card.stats-info { border-left-color: var(--info-color); }
+        .mi-page-title i { color: var(--accent); }
+        
+        .mi-page-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* ===== Toolbar ===== */
+        .mi-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        
+        .mi-search {
+            position: relative;
+            flex: 1;
+            max-width: 360px;
+        }
+        
+        .mi-search i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-hint);
+            font-size: 16px;
+        }
+        
+        .mi-search input {
+            padding-left: 38px;
+        }
+
+        /* ===== Tab-like breadcrumb ===== */
+        .mi-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 20px;
+        }
+        
+        .mi-tab {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-hint);
+            text-decoration: none;
+            border-bottom: 2px solid transparent;
+            transition: var(--transition);
+        }
+        
+        .mi-tab:hover { color: var(--text-primary); }
+        .mi-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <header>
+    <nav class="mi-nav">
         <div class="container">
-            <nav class="navbar navbar-expand-lg navbar-dark">
-                <a class="navbar-brand" href="{{ url_for('assets.dashboard') }}">
-                    <i class="bi bi-box-seam"></i> 信息资产管理系统
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="切换导航">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNav">
-                    {% if current_user.is_authenticated %}
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('assets.dashboard') }}"><i class="bi bi-speedometer2"></i> 仪表盘</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="assetDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-laptop"></i> 涉密资产</a>
-                            <ul class="dropdown-menu" aria-labelledby="assetDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('assets.office_computers') }}"><i class="bi bi-laptop"></i> 办公电脑</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('assets.industrial_computers') }}"><i class="bi bi-cpu"></i> 工控机</a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('personnel.personnel_list') }}"><i class="bi bi-people"></i> 人员管理</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('security.index') }}"><i class="bi bi-shield-lock"></i> 保密管理</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="auditDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-clipboard-check"></i> 稽查管理</a>
-                            <ul class="dropdown-menu" aria-labelledby="auditDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('audit.task_list') }}"><i class="bi bi-list-task"></i> 任务列表</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('audit.my_tasks') }}"><i class="bi bi-person-check"></i> 我的任务</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('audit.record_list') }}"><i class="bi bi-journal-text"></i> 稽查记录</a></li>
-                                {% if current_user.role == 'admin' %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('audit.statistics') }}"><i class="bi bi-bar-chart"></i> 任务统计</a></li>
-                                {% endif %}
-                            </ul>
-                        </li>
-                        {% if current_user.role == 'admin' %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-gear"></i> 系统管理</a>
-                            <ul class="dropdown-menu" aria-labelledby="adminDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> 用户管理</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('departments.manage_departments') }}"><i class="bi bi-building"></i> 部门管理</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('admin.login_logs') }}"><i class="bi bi-clock-history"></i> 登录日志</a></li>
-                                <li><a class="dropdown-item" href="{{ url_for('admin.operation_logs') }}"><i class="bi bi-journal-text"></i> 操作日志</a></li>
-                            </ul>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="aiDropdown" role="button" data-bs-toggle="dropdown"><i class="bi bi-robot"></i> AI助手</a>
-                            <ul class="dropdown-menu" aria-labelledby="aiDropdown">
-                                <li><a class="dropdown-item" href="{{ url_for('ai_assistant.ai_assistant') }}"><i class="bi bi-chat-dots"></i> 数据问答</a></li>
-                                {% if current_user.role == 'admin' %}
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{{ url_for('ai_settings.ai_settings') }}"><i class="bi bi-gear"></i> AI配置</a></li>
-                                {% endif %}
-                            </ul>
-                        </li>
-                    </ul>
-                    <ul class="navbar-nav ms-auto">
-                        <li class="nav-item">
-                            <span class="nav-link"><i class="bi bi-person-circle"></i> 欢迎您, {{ current_user.username }}</span>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> 退出登录</a>
-                        </li>
-                    </ul>
+            <a class="mi-brand" href="{{ url_for('assets.dashboard') }}">
+                <i class="bi bi-box-seam-fill"></i> 资产管理
+            </a>
+            <button class="mi-toggler" onclick="document.querySelector('.mi-nav-collapse').classList.toggle('show')">
+                <i class="bi bi-list"></i>
+            </button>
+            <div class="mi-nav-collapse">
+                {% if current_user.is_authenticated %}
+                <div class="mi-nav-links">
+                    <a class="mi-nav-link" href="{{ url_for('assets.dashboard') }}"><i class="bi bi-grid-1x2"></i> 仪表盘</a>
+                    <div class="mi-dropdown">
+                        <a class="mi-nav-link" href="#"><i class="bi bi-laptop"></i> 涉密资产 <i class="bi bi-chevron-down" style="font-size:12px"></i></a>
+                        <div class="mi-dropdown-menu">
+                            <a class="mi-dropdown-item" href="{{ url_for('assets.office_computers') }}"><i class="bi bi-laptop"></i> 办公电脑</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('assets.industrial_computers') }}"><i class="bi bi-cpu"></i> 工控机</a>
+                        </div>
+                    </div>
+                    <a class="mi-nav-link" href="{{ url_for('personnel.personnel_list') }}"><i class="bi bi-people"></i> 人员管理</a>
+                    <a class="mi-nav-link" href="{{ url_for('security.index') }}"><i class="bi bi-shield-lock"></i> 保密管理</a>
+                    <div class="mi-dropdown">
+                        <a class="mi-nav-link" href="#"><i class="bi bi-clipboard-check"></i> 稽查管理 <i class="bi bi-chevron-down" style="font-size:12px"></i></a>
+                        <div class="mi-dropdown-menu">
+                            <a class="mi-dropdown-item" href="{{ url_for('audit.task_list') }}"><i class="bi bi-list-task"></i> 任务列表</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('audit.my_tasks') }}"><i class="bi bi-person-check"></i> 我的任务</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('audit.record_list') }}"><i class="bi bi-journal-text"></i> 稽查记录</a>
+                            {% if can('audit_statistics', 'view') %}
+                            <div class="mi-dropdown-divider"></div>
+                            <a class="mi-dropdown-item" href="{{ url_for('audit.statistics') }}"><i class="bi bi-bar-chart"></i> 任务统计</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mi-dropdown">
+                        <a class="mi-nav-link" href="#"><i class="bi bi-briefcase"></i> 案件管理 <i class="bi bi-chevron-down" style="font-size:12px"></i></a>
+                        <div class="mi-dropdown-menu">
+                            <a class="mi-dropdown-item" href="{{ url_for('case_management.collections') }}"><i class="bi bi-folder2-open"></i> 案例集</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('case_management.sop_list') }}"><i class="bi bi-list-check"></i> 调查SOP</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('case_management.reports') }}"><i class="bi bi-file-earmark-text"></i> 调查报告</a>
+                        </div>
+                    </div>
+                    <div class="mi-dropdown">
+                        <a class="mi-nav-link" href="#"><i class="bi bi-exclamation-triangle"></i> 应急管理 <i class="bi bi-chevron-down" style="font-size:12px"></i></a>
+                        <div class="mi-dropdown-menu">
+                            <a class="mi-dropdown-item" href="{{ url_for('emergency.plans') }}"><i class="bi bi-file-earmark-medical"></i> 应急预案</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('emergency.drills') }}"><i class="bi bi-megaphone"></i> 应急演练</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('emergency.teams') }}"><i class="bi bi-people-fill"></i> 应急小组</a>
+                        </div>
+                    </div>
+                    {% if can('admin_users', 'view') or can('departments_manage', 'view') %}
+                    <div class="mi-dropdown">
+                        <a class="mi-nav-link" href="#"><i class="bi bi-gear"></i> 系统管理 <i class="bi bi-chevron-down" style="font-size:12px"></i></a>
+                        <div class="mi-dropdown-menu">
+                            {% if can('admin_users', 'view') %}
+                            <a class="mi-dropdown-item" href="{{ url_for('admin.users') }}"><i class="bi bi-people"></i> 用户管理</a>
+                            {% endif %}
+                            {% if can('departments_manage', 'view') %}
+                            <a class="mi-dropdown-item" href="{{ url_for('departments.manage_departments') }}"><i class="bi bi-building"></i> 部门管理</a>
+                            {% endif %}
+                            <a class="mi-dropdown-item" href="{{ url_for('security.role_permission_config') }}"><i class="bi bi-grid-3x3"></i> 角色权限配置</a>
+                            {% if can('admin_login_logs', 'view') %}
+                            <div class="mi-dropdown-divider"></div>
+                            <a class="mi-dropdown-item" href="{{ url_for('admin.login_logs') }}"><i class="bi bi-clock-history"></i> 登录日志</a>
+                            {% endif %}
+                            {% if can('admin_operation_logs', 'view') %}
+                            <a class="mi-dropdown-item" href="{{ url_for('admin.operation_logs') }}"><i class="bi bi-journal-text"></i> 操作日志</a>
+                            {% endif %}
+                        </div>
+                    </div>
                     {% endif %}
+                    <div class="mi-dropdown">
+                        <a class="mi-nav-link" href="#"><i class="bi bi-robot"></i> AI助手 <i class="bi bi-chevron-down" style="font-size:12px"></i></a>
+                        <div class="mi-dropdown-menu">
+                            <a class="mi-dropdown-item" href="{{ url_for('ai_assistant.ai_assistant') }}"><i class="bi bi-chat-dots"></i> 数据问答</a>
+                            <a class="mi-dropdown-item" href="{{ url_for('ai_agents.index') }}"><i class="bi bi-robot"></i> Agent工作台</a>
+                            {% if can('ai_settings', 'view') %}
+                            <div class="mi-dropdown-divider"></div>
+                            <a class="mi-dropdown-item" href="{{ url_for('ai_settings.ai_settings') }}"><i class="bi bi-gear"></i> AI配置</a>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-            </nav>
+                <div class="mi-nav-user">
+                    <span class="mi-nav-user-text"><i class="bi bi-person-circle"></i> {{ current_user.username }}</span>
+                    <a class="mi-nav-logout" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> 退出</a>
+                </div>
+                {% endif %}
+            </div>
         </div>
-    </header>
+    </nav>
     
-    <main class="container">
+    <main class="mi-main">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                        <i class="bi bi-info-circle-fill me-2"></i>
+                    <div class="mi-alert mi-alert-{{ category }}">
+                        <i class="bi bi-{% if category == 'success' %}check-circle-fill{% elif category == 'danger' %}exclamation-circle-fill{% elif category == 'warning' %}exclamation-triangle-fill{% else %}info-circle-fill{% endif %}"></i>
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="关闭"></button>
+                        <button class="mi-alert-close" onclick="this.parentElement.remove()">&times;</button>
                     </div>
                 {% endfor %}
             {% endif %}
@@ -283,10 +849,120 @@
         {% block content %}{% endblock %}
     </main>
     
-    <footer>
-        <p class="mb-0">&copy; 2024 信息资产管理系统. 保留所有权利.</p>
+    <!-- Loading Overlay -->
+    <div id="globalLoading" class="mi-loading">
+        <div style="text-align:center">
+            <div class="mi-spinner"></div>
+            <div class="mi-loading-text" style="margin-top:12px;font-size:14px;color:var(--text-hint)">处理中...</div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="mi-toast-container"></div>
+
+    <footer class="mi-footer">
+        &copy; 2024 信息资产管理系统
     </footer>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/marked/12.0.0/marked.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/dompurify/3.0.8/purify.min.js"></script>
+    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // === Global Loading ===
+        function showLoading(msg) { 
+            var el = document.getElementById('globalLoading'); 
+            el.classList.add('show');
+            if (msg) el.querySelector('.mi-loading-text').textContent = msg;
+        }
+        function hideLoading() { 
+            document.getElementById('globalLoading').classList.remove('show'); 
+            document.getElementById('globalLoading').querySelector('.mi-loading-text').textContent = '处理中...';
+        }
+
+        // === Markdown render ===
+        function renderMarkdown(text) {
+            if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                return DOMPurify.sanitize(marked.parse(text));
+            }
+            return text.replace(/\n/g, '<br>');
+        }
+        
+        // === Flash auto-hide ===
+        document.querySelectorAll('.mi-alert').forEach(function(el) {
+            setTimeout(function() { el.style.opacity = '0'; setTimeout(function() { el.remove(); }, 300); }, 5000);
+        });
+        
+        // === Toast System ===
+        function showToast(msg, type) {
+            type = type || 'info';
+            var container = document.querySelector('.mi-toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.className = 'mi-toast-container';
+                document.body.appendChild(container);
+            }
+            var icons = {success:'check-circle-fill',danger:'exclamation-circle-fill',warning:'exclamation-triangle-fill',info:'info-circle-fill'};
+            var toast = document.createElement('div');
+            toast.className = 'mi-alert mi-alert-' + type;
+            toast.innerHTML = '<i class="bi bi-' + (icons[type]||icons.info) + '"></i> ' + msg;
+            toast.style.marginBottom = '0';
+            container.appendChild(toast);
+            setTimeout(function() { toast.style.opacity = '0'; setTimeout(function() { toast.remove(); }, 300); }, 3000);
+        }
+
+        // === Nav Highlight ===
+        (function() {
+            var path = window.location.pathname;
+            document.querySelectorAll('.mi-nav-link, .mi-dropdown-item').forEach(function(link) {
+                var href = link.getAttribute('href');
+                if (href && href !== '#' && path.indexOf(href) === 0) {
+                    // Highlight the parent dropdown if inside one
+                    var dropdown = link.closest('.mi-dropdown');
+                    if (dropdown && link.classList.contains('mi-dropdown-item')) {
+                        var navLink = dropdown.querySelector(':scope > .mi-nav-link');
+                        if (navLink) navLink.classList.add('active');
+                    }
+                    link.classList.add('active');
+                }
+            });
+        })();
+        
+        // === Delete Confirmation ===
+        function confirmDelete(url, name) {
+            return new Promise(function(resolve) {
+                var modal = document.getElementById('deleteModal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.className = 'modal fade';
+                    modal.id = 'deleteModal';
+                    modal.tabIndex = -1;
+                    modal.innerHTML = '<div class="modal-dialog modal-sm modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"><i class="bi bi-exclamation-triangle" style="color:var(--danger)"></i> 确认删除</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body" style="font-size:14px">确定要删除 <strong id="deleteTargetName"></strong> 吗？此操作不可恢复！</div><div class="modal-footer"><button type="button" class="mi-btn mi-btn-default" data-bs-dismiss="modal">取消</button><a id="deleteConfirmBtn" class="mi-btn mi-btn-danger" href="#" onclick="document.getElementById(\'deleteModal\').querySelector(\'.btn-close\').click();return true"><i class="bi bi-trash"></i> 确认删除</a></div></div></div>';
+                    document.body.appendChild(modal);
+                }
+                document.getElementById('deleteTargetName').textContent = name || '';
+                document.getElementById('deleteConfirmBtn').href = url;
+                new bootstrap.Modal(modal).show();
+            });
+        }
+        
+        // === Auto CSRF Token ===
+        (function() {
+            var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            var origFetch = window.fetch;
+            window.fetch = function(url, opts) {
+                opts = opts || {};
+                opts.headers = opts.headers || {};
+                if (opts.method && opts.method.toUpperCase() !== 'GET') opts.headers['X-CSRFToken'] = token;
+                return origFetch.call(this, url, opts);
+            };
+            var origOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function() {
+                var m = arguments[0], xhr = this;
+                origOpen.apply(this, arguments);
+                if (m.toUpperCase() !== 'GET') xhr.setRequestHeader('X-CSRFToken', token);
+            };
+        })();
+    </script>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

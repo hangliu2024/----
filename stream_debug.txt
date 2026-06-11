@@ -1,0 +1,50 @@
+﻿HTTP/1.1 200 OK
+Connection: close
+Transfer-Encoding: chunked
+X-Accel-Buffering: no
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+X-XSS-Protection: 1; mode=block
+Content-Security-Policy: default-src 'self' https://cdn.jsdelivr.net https://cdn.bootcdn.net https://cdnjs.cloudflare.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.bootcdn.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://cdn.bootcdn.net; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://cdn.jsdelivr.net https://cdn.bootcdn.net https://cdnjs.cloudflare.com;
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: geolocation=(), microphone=(), camera=()
+Vary: Cookie
+Cache-Control: no-cache
+Content-Type: text/event-stream; charset=utf-8
+Date: Fri, 29 May 2026 14:42:58 GMT
+Server: gunicorn
+
+data: {"step": {"step": 1, "action": "意图识别", "status": "processing"}}
+
+data: {"step": {"step": 1, "action": "意图识别", "status": "completed", "result": "普通对话"}}
+
+data: {"step": {"step": 2, "action": "生成回答", "status": "processing"}}
+
+data: {"content": "æ¨å¥½"}
+
+data: {"content": "ï¼"}
+
+data: {"content": "é®é¢"}
+
+data: {"content": "æç¹"}
+
+data: {"content": "æ¨¡ç³"}
+
+data: {"content": "ï¼"}
+
+data: {"content": "è¯·é®"}
+
+data: {"content": "æ¨"}
+
+data: {"content": "æ³"}
+
+data: {"content": "é®"}
+
+data: {"content": "ä»ä¹å¢"}
+
+data: {"content": "ï¼"}
+
+data: {"step": {"step": 2, "action": "生成回答", "status": "completed"}}
+
+data: {"done": true}
+

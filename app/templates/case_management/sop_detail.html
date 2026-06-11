@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% block title %}{{ item.sop_title }} - 案件调查SOP{% endblock %}
+{% block content %}
+<style>
+.sop-viewer-container { max-width: 960px; margin: 0 auto; }
+
+/* 文档导航条 */
+.sop-viewer-nav {
+    position: sticky; top: 0; z-index: 100;
+    background: #fff; border-bottom: 2px solid #1a237e;
+    padding: 10px 20px; display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.sop-viewer-nav .nav-left { display: flex; align-items: center; gap: 12px; }
+.sop-viewer-nav .nav-left a { color: #1a237e; text-decoration: none; font-size: 14px; }
+.sop-viewer-nav .nav-left a:hover { text-decoration: underline; }
+.sop-viewer-nav .nav-right { display: flex; gap: 8px; }
+
+/* 文档纸张效果 */
+.sop-paper {
+    background: #fff;
+    box-shadow: 0 0 20px rgba(0,0,0,0.08), 0 0 2px rgba(0,0,0,0.06);
+    margin: 24px auto;
+    padding: 60px 72px;
+    min-height: 600px;
+    position: relative;
+}
+
+/* 封面 */
+.sop-document .sop-cover {
+    text-align: center;
+    padding: 60px 0 40px;
+    border-bottom: 3px double #1a237e;
+    margin-bottom: 40px;
+}
+.sop-document .sop-cover h1 {
+    font-size: 22px; color: #1a237e; margin-bottom: 16px;
+    letter-spacing: 4px;
+}
+.sop-document .sop-cover h2 {
+    font-size: 28px; color: #1a237e; font-weight: 700;
+    line-height: 1.6; margin: 0;
+}
+
+/* 目录 */
+.sop-document .sop-toc {
+    margin: 30px 0 40px; padding: 24px 32px;
+    background: #f8f9ff; border-left: 4px solid #1a237e;
+}
+.sop-document .sop-toc h3 { font-size: 18px; color: #1a237e; margin: 0 0 16px; }
+.sop-document .sop-toc ul { list-style: none; padding-left: 0; margin: 0; }
+.sop-document .sop-toc > ul > li { margin-bottom: 6px; font-size: 15px; font-weight: 500; }
+.sop-document .sop-toc ul ul { padding-left: 24px; margin-top: 4px; }
+.sop-document .sop-toc ul ul li { font-size: 14px; font-weight: 400; color: #555; margin-bottom: 2px; }
+
+/* 章节 */
+.sop-document .sop-chapter {
+    margin-bottom: 36px;
+    page-break-inside: avoid;
+}
+.sop-document .sop-chapter h3 {
+    font-size: 20px; color: #1a237e; font-weight: 700;
+    padding: 12px 16px; margin: 0 0 20px;
+    background: linear-gradient(90deg, #e8eaf6 0%, transparent 100%);
+    border-left: 5px solid #1a237e;
+}
+.sop-document .sop-chapter h4 {
+    font-size: 16px; color: #283593; font-weight: 600;
+    margin: 24px 0 12px; padding-bottom: 6px;
+    border-bottom: 1px solid #e0e0e0;
+}
+.sop-document .sop-chapter h5 {
+    font-size: 15px; color: #3949ab; font-weight: 600;
+    margin: 20px 0 10px;
+}
+.sop-document .sop-chapter p {
+    font-size: 14px; line-height: 2; color: #333;
+    text-indent: 2em; margin: 8px 0;
+}
+.sop-document .sop-chapter ol,
+.sop-document .sop-chapter ul {
+    margin: 8px 0 8px 2em; padding-left: 1em;
+}
+.sop-document .sop-chapter li {
+    font-size: 14px; line-height: 2; color: #333;
+    margin-bottom: 4px;
+}
+.sop-document .sop-chapter strong {
+    color: #1a237e;
+}
+
+/* 水印 */
+.sop-paper::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 200px,
+        rgba(26,35,126,0.015) 200px,
+        rgba(26,35,126,0.015) 201px
+    );
+    pointer-events: none;
+    z-index: 0;
+}
+.sop-document { position: relative; z-index: 1; }
+
+/* 文件信息标签 */
+.sop-file-info {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    padding: 16px 20px; background: #f5f6fa;
+    border-radius: 6px; margin-bottom: 20px;
+}
+.sop-file-info .info-tag {
+    font-size: 12px; color: #666;
+    background: #fff; padding: 4px 12px;
+    border-radius: 4px; border: 1px solid #e0e0e0;
+}
+.sop-file-info .info-tag span { color: #1a237e; font-weight: 500; }
+
+/* SOP表格样式 - 使用!important确保不被Bootstrap覆盖 */
+.sop-document table.sop-table,
+.sop-document .sop-chapter table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 16px 0 !important;
+    font-size: 14px !important;
+    background: #fff !important;
+    border: 2px solid #1a237e !important;
+}
+.sop-document table.sop-table th,
+.sop-document table.sop-table td,
+.sop-document .sop-chapter table th,
+.sop-document .sop-chapter table td {
+    border: 1px solid #7986cb !important;
+    padding: 10px 14px !important;
+    text-align: left !important;
+    line-height: 1.6 !important;
+    vertical-align: top !important;
+}
+.sop-document table.sop-table th,
+.sop-document .sop-chapter table th {
+    background: #e8eaf6 !important;
+    color: #1a237e !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+    border-bottom: 2px solid #1a237e !important;
+}
+.sop-document table.sop-table td,
+.sop-document .sop-chapter table td {
+    color: #333 !important;
+}
+.sop-document table.sop-table tr:nth-child(even) td,
+.sop-document .sop-chapter table tr:nth-child(even) td {
+    background: #f5f6fa !important;
+}
+.sop-document table.sop-table tr:hover td,
+.sop-document .sop-chapter table tr:hover td {
+    background: #e8eaf6 !important;
+}
+
+@media (max-width: 768px) {
+    .sop-paper { padding: 24px 20px; }
+    .sop-document .sop-cover h2 { font-size: 22px; }
+    .sop-document table.sop-table th,
+    .sop-document table.sop-table td { padding: 6px 8px; font-size: 12px; }
+}
+</style>
+
+<div class="sop-viewer-nav">
+    <div class="nav-left">
+        <a href="{{ url_for('case_management.sop_list') }}"><i class="bi bi-arrow-left"></i> 返回列表</a>
+        <span style="color:#ccc">|</span>
+        <strong style="color:#1a237e;font-size:15px">{{ item.sop_no }}</strong>
+    </div>
+    <div class="nav-right">
+        <a href="{{ url_for('case_management.sop_edit', id=item.id) }}" class="mi-btn mi-btn-default" style="padding:4px 12px;font-size:13px"><i class="bi bi-pencil"></i> 编辑</a>
+        <a href="{{ url_for('case_management.sop_list') }}" class="mi-btn mi-btn-default" style="padding:4px 12px;font-size:13px"><i class="bi bi-list"></i> 列表</a>
+    </div>
+</div>
+
+<div class="sop-viewer-container">
+    <div class="sop-file-info">
+        <div class="info-tag">编号：<span>{{ item.sop_no }}</span></div>
+        <div class="info-tag">类型：<span>{{ item.sop_type or '-' }}</span></div>
+        <div class="info-tag">版本：<span>v{{ item.sop_version or '1.0' }}</span></div>
+        <div class="info-tag">状态：<span>{% if item.status=='published' %}已发布{% elif item.status=='archived' %}已归档{% else %}草稿{% endif %}</span></div>
+        <div class="info-tag">责任角色：<span>{{ item.responsible_role or '-' }}</span></div>
+    </div>
+
+    <div class="sop-paper">
+        {% if item.full_content %}
+        {{ item.full_content|safe }}
+        {% else %}
+        <div class="sop-document">
+            <div class="sop-cover">
+                <h1>标准操作规程</h1>
+                <h2>{{ item.sop_title }}</h2>
+            </div>
+            {% if item.applicable_scope %}
+            <div class="sop-chapter">
+                <h3>适用范围</h3>
+                <p>{{ item.applicable_scope }}</p>
+            </div>
+            {% endif %}
+            {% if item.investigation_steps %}
+            <div class="sop-chapter">
+                <h3>调查步骤</h3>
+                <p>{{ item.investigation_steps }}</p>
+            </div>
+            {% endif %}
+            {% if item.evidence_requirements %}
+            <div class="sop-chapter">
+                <h3>证据要求</h3>
+                <p>{{ item.evidence_requirements }}</p>
+            </div>
+            {% endif %}
+            {% if item.timeline_requirements %}
+            <div class="sop-chapter">
+                <h3>时限要求</h3>
+                <p>{{ item.timeline_requirements }}</p>
+            </div>
+            {% endif %}
+            {% if item.approval_process %}
+            <div class="sop-chapter">
+                <h3>审批流程</h3>
+                <p>{{ item.approval_process }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

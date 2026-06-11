@@ -23,8 +23,8 @@ def allowed_file(filename):
 @bp.route('/personnel')
 @department_permission_required
 def personnel_list():
-    search = request.args.get('search')
-    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '').strip()[:100] if request.args.get('search') else None
+    page = max(request.args.get('page', 1, type=int), 1)
     per_page = 50
 
     query = Personnel.query
@@ -433,16 +433,30 @@ def update_personnel(person_id):
 @department_permission_required
 def view_personnel(person_id):
     person = Personnel.query.get_or_404(person_id)
-    form = PersonnelForm(obj=person)
-    return render_template('personnel/personnel_form.html', form=form, legend='查看人员', person=person, view_only=True)
+    return render_template('personnel/personnel_detail.html', person=person)
 
 @bp.route('/personnel/<int:person_id>/delete', methods=['POST'])
 @department_permission_required
 def delete_personnel(person_id):
     person = Personnel.query.get_or_404(person_id)
-    db.session.delete(person)
-    db.session.commit()
-    flash('人员信息删除成功！', 'success')
+    try:
+        # 记录被删除人员信息用于日志
+        emp_name = person.emp_name
+        emp_id = person.emp_id
+        
+        # 级联清理相关数据：保密人员记录
+        from app.models import ClassifiedPersonnel
+        classified = ClassifiedPersonnel.query.filter_by(emp_id=emp_id).first()
+        if classified:
+            db.session.delete(classified)
+        
+        # 删除人员主体
+        db.session.delete(person)
+        db.session.commit()
+        flash(f'人员 "{emp_name}"（工号: {emp_id}）已成功删除！', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'删除失败: {str(e)}', 'danger')
     return redirect(url_for('personnel.personnel_list'))
 
 
@@ -654,6 +668,13 @@ def import_personnel():
     
     if not allowed_file(file.filename):
         return jsonify({'success': False, 'message': '只支持 .xlsx 或 .xls 格式的文件'}), 400
+
+    file.seek(0, 2)
+    file_size = file.tell()
+    file.seek(0)
+    max_size = 10 * 1024 * 1024
+    if file_size > max_size:
+        return jsonify({'success': False, 'message': f'文件过大，最大支持{max_size // 1024 // 1024}MB'}), 400
     
     try:
         wb = openpyxl.load_workbook(file)

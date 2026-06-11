@@ -1,20 +1,24 @@
+name: asset-management
+
 services:
   web:
     build: .
     container_name: asset-management
     ports:
-      - "5000:5000"
+      - "5001:5000"
     environment:
-      - SECRET_KEY=your-secret-key-change-in-production
-      - DATABASE_URL=mysql+pymysql://asset_user:asset_password@db:3306/asset_management
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - MYSQL_HOST=host.docker.internal
+      - MYSQL_PORT=3307
+      - MYSQL_USER=nocobase
+      - MYSQL_PASSWORD=nocobase
+      - MYSQL_DATABASE=nocobase
       - AI_PROVIDER=ollama
       - OLLAMA_API_BASE=http://host.docker.internal:11434/v1
       - OLLAMA_MODEL=qwen3.5:9B
+      - SESSION_COOKIE_SECURE=false
     volumes:
       - ./data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
     restart: unless-stopped
     extra_hosts:
       - "host.docker.internal:host-gateway"

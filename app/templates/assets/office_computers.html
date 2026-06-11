@@ -1,132 +1,182 @@
 {% extends "base.html" %}
 
-{% block title %}办公电脑管理{% endblock %}
+{% block title %}办公电脑管理 - 资产管理系统{% endblock %}
 
 {% block content %}
-<style>
-    .compact-table {
-        font-size: 0.85rem;
-    }
-    .compact-table thead th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        font-weight: 600;
-        padding: 10px 8px;
-        border: none;
-        white-space: nowrap;
-    }
-    .compact-table tbody td {
-        padding: 8px;
-        vertical-align: middle;
-        border-color: #e3e3e3;
-    }
-    .compact-table tbody tr:hover {
-        background-color: #f8f9ff;
-    }
-    .search-box {
-        border-radius: 20px;
-        border: 2px solid #e0e0e0;
-        padding: 8px 16px;
-        transition: all 0.3s;
-    }
-    .search-box:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-    .btn-search {
-        border-radius: 20px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        color: white;
-        padding: 8px 20px;
-    }
-    .card-header-custom {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
-        color: white;
-        border-radius: 12px 12px 0 0;
-        padding: 20px 25px;
-    }
-</style>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-laptop"></i> 办公电脑管理</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">查看和管理公司办公电脑设备</p>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <a href="{{ url_for('assets.download_computer_template') }}" class="mi-btn mi-btn-default"><i class="bi bi-download"></i> 下载模板</a>
+        <button class="mi-btn mi-btn-default" onclick="document.getElementById('importFile').click()"><i class="bi bi-upload"></i> 导入</button>
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="importComputers(this)">
+        <a href="{{ url_for('assets.export_computers') }}" class="mi-btn mi-btn-default"><i class="bi bi-file-earmark-excel"></i> 导出</a>
+    </div>
+</div>
 
-<div class="container-fluid py-4">
-    <div class="card">
-        <div class="card-header card-header-custom">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h4 class="mb-1"><i class="bi bi-laptop"></i> 办公电脑管理</h4>
-                    <p class="mb-0 opacity-75">查看和管理公司办公电脑设备</p>
-                </div>
+<div class="mi-card">
+    <div class="mi-card-body" style="padding-bottom:16px">
+        <form class="mi-toolbar" method="GET" action="{{ url_for('assets.office_computers') }}">
+            <div class="mi-search">
+                <i class="bi bi-search"></i>
+                <input class="mi-input" type="search" placeholder="搜索电脑名称、工号、姓名、部门..." name="search" value="{{ search or '' }}">
             </div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="mi-btn mi-btn-primary mi-btn-sm" type="submit"><i class="bi bi-search"></i> 搜索</button>
+                {% if search %}
+                <a href="{{ url_for('assets.office_computers') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-x-lg"></i> 清除</a>
+                {% endif %}
+                <select class="mi-input mi-select" style="width:auto;min-width:80px;padding:6px 30px 6px 10px;font-size:13px" name="per_page" onchange="this.form.submit()">
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20条</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50条</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100条</option>
+                    <option value="200" {% if per_page == 200 %}selected{% endif %}>200条</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    
+    {% if search or pagination %}
+    <div style="padding:0 24px 12px;font-size:13px;color:var(--text-hint)">
+        {% if total is defined %}
+        共找到 <strong style="color:var(--text-primary)">{{ total }}</strong> 条记录
+        {% if search %}（搜索词：<code style="background:var(--bg);padding:1px 6px;border-radius:3px">{{ search }}</code>）{% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <div class="mi-table-wrap" style="border:none;border-radius:0">
+        <table class="mi-table">
+            <thead>
+                <tr>
+                    <th style="width:50px;text-align:center">#</th>
+                    <th>电脑名称</th>
+                    <th>工号</th>
+                    <th>姓名</th>
+                    <th>部门代码</th>
+                    <th>二级部门</th>
+                    <th>网络地址</th>
+                    <th>IP/MAC</th>
+                    <th>操作系统</th>
+                    <th style="text-align:center;width:80px">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for computer_info in computer_infos %}
+                <tr>
+                    <td style="text-align:center;color:var(--text-hint)">{{ loop.index }}</td>
+                    <td>
+                        <span style="font-weight:500">{{ computer_info.computer_name }}</span>
+                    </td>
+                    <td>{{ computer_info.employee_id if computer_info.employee_id else '<span style="color:var(--text-hint)">-</span>'|safe }}</td>
+                    <td>{{ computer_info.emp_name if computer_info.emp_name else '<span style="color:var(--text-hint)">-</span>'|safe }}</td>
+                    <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:13px">{{ computer_info.dept_code if computer_info.dept_code else '-' }}</code></td>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ computer_info.dept_level2 or '-' }}">{{ computer_info.dept_level2 if computer_info.dept_level2 else '<span style="color:var(--text-hint)">-</span>'|safe }}</td>
+                    <td style="font-size:13px" title="{{ computer_info.network_address or '-' }}">{{ computer_info.network_address if computer_info.network_address else '<span style="color:var(--text-hint)">-</span>'|safe }}</td>
+                    <td><span style="font-family:monospace;font-size:13px;color:var(--text-secondary)" title="{{ computer_info.ip_mac or '' }}">{{ computer_info.ip_mac[:24] if computer_info.ip_mac else '-' }}</span></td>
+                    <td><span class="mi-badge mi-badge-info">{{ computer_info.operating_system[:15] if computer_info.operating_system else '-' }}</span></td>
+                    <td style="text-align:center">
+                        <div class="mi-btn-group" style="justify-content:center">
+                            <a href="{{ url_for('assets.office_computers') }}?search={{ computer_info.computer_name }}" class="mi-btn mi-btn-ghost mi-btn-sm" title="查看"><i class="bi bi-eye"></i></a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not computer_infos %}
+                <tr>
+                    <td colspan="10" style="text-align:center;padding:48px;color:var(--text-hint)">
+                        <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px"></i>
+                        {% if search %}
+                        没有找到与 "<strong>{{ search }}</strong>" 相关的电脑
+                        <div style="margin-top:8px;font-size:13px">
+                            <a href="{{ url_for('assets.office_computers') }}" class="mi-btn mi-btn-ghost mi-btn-sm">清除搜索</a>
+                        </div>
+                        {% else %}
+                        暂无数据
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if pagination and pagination.pages > 1 %}
+    <div style="padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div style="font-size:13px;color:var(--text-hint)">
+            共 {{ pagination.pages }} 页，当前第 {{ pagination.page }} 页
         </div>
-        
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <form class="d-flex" method="GET" action="{{ url_for('assets.office_computers') }}">
-                    <input class="form-control search-box me-2" type="search" placeholder="搜索电脑名称、工号、姓名、部门..." name="search" value="{{ search or '' }}">
-                    <button class="btn btn-search" type="submit"><i class="bi bi-search"></i> 搜索</button>
-                </form>
+        <div class="mi-pagination" style="margin-top:0">
+            <a class="mi-page-link" href="{{ url_for('assets.office_computers', page=1, search=search, per_page=per_page) }}" title="首页"><i class="bi bi-chevron-double-left" style="font-size:12px"></i></a>
+            <a class="mi-page-link {{ '' if pagination.has_prev else 'disabled' }}" href="{{ url_for('assets.office_computers', page=pagination.prev_num if pagination.has_prev else 1, search=search, per_page=per_page) }}" title="上一页"><i class="bi bi-chevron-left"></i></a>
+            {% set start = [1, pagination.page - 2]|max %}
+            {% set end = [pagination.pages, pagination.page + 2]|min %}
+            {% for p in range(start, end + 1) %}
+            <span class="{{ 'mi-page-active' if p == pagination.page else '' }}"><a class="mi-page-link" href="{{ url_for('assets.office_computers', page=p, search=search, per_page=per_page) }}">{{ p }}</a></span>
+            {% endfor %}
+            <a class="mi-page-link {{ '' if pagination.has_next else 'disabled' }}" href="{{ url_for('assets.office_computers', page=pagination.next_num if pagination.has_next else pagination.pages, search=search, per_page=per_page) }}" title="下一页"><i class="bi bi-chevron-right"></i></a>
+            <a class="mi-page-link" href="{{ url_for('assets.office_computers', page=pagination.pages, search=search, per_page=per_page) }}" title="末页"><i class="bi bi-chevron-double-right" style="font-size:12px"></i></a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- 导入结果弹窗 -->
+<div id="importModal" class="modal fade" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导入结果</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            
-            <div class="table-responsive">
-                <table class="table table-hover compact-table mb-0">
-                    <thead>
-                        <tr>
-                            <th class="text-center" style="width: 50px;">序号</th>
-                            <th>电脑名称</th>
-                            <th>工号</th>
-                            <th>姓名</th>
-                            <th>部门代码</th>
-                            <th>二级部门</th>
-                            <th>网络地址</th>
-                            <th>IP/MAC</th>
-                            <th>操作系统</th>
-                            <th class="text-center" style="width: 80px;">操作</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for computer_info in computer_infos %}
-                        <tr>
-                            <td class="text-center text-muted">{{ loop.index }}</td>
-                            <td><div class="d-flex align-items-center"><i class="bi bi-laptop text-primary me-2"></i><span class="fw-medium">{{ computer_info.computer_name }}</span></div></td>
-                            <td><span class="badge bg-primary">{{ computer_info.employee_id if computer_info.employee_id else '无' }}</span></td>
-                            <td>{{ computer_info.emp_name if computer_info.emp_name else '无' }}</td>
-                            <td><code class="bg-light px-2 py-1 rounded">{{ computer_info.dept_code if computer_info.dept_code else '无' }}</code></td>
-                            <td><span class="text-primary">{{ computer_info.dept_level2 if computer_info.dept_level2 else '无' }}</span></td>
-                            <td>{{ computer_info.network_address if computer_info.network_address else '无' }}</td>
-                            <td><small class="text-muted font-monospace">{{ computer_info.ip_mac[:20] if computer_info.ip_mac else '无' }}</small></td>
-                            <td><span class="badge bg-secondary">{{ computer_info.operating_system[:15] if computer_info.operating_system else '无' }}</span></td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="modal-body">
+                <div id="importResult"></div>
             </div>
-            
-            {% if pagination and pagination.pages > 1 %}
-            <nav aria-label="分页导航" class="mt-3">
-                <ul class="pagination justify-content-center flex-wrap">
-                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.office_computers', page=1, search=search) }}">首页</a>
-                    </li>
-                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.office_computers', page=pagination.prev_num if pagination.has_prev else 1, search=search) }}">上一页</a>
-                    </li>
-                    {% set start = [1, pagination.page - 2]|max %}
-                    {% set end = [pagination.pages, pagination.page + 2]|min %}
-                    {% for p in range(start, end + 1) %}
-                    <li class="page-item {{ 'active' if p == pagination.page else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.office_computers', page=p, search=search) }}">{{ p }}</a>
-                    </li>
-                    {% endfor %}
-                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.office_computers', page=pagination.next_num if pagination.has_next else pagination.pages, search=search) }}">下一页</a>
-                    </li>
-                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
-                        <a class="page-link" href="{{ url_for('assets.office_computers', page=pagination.pages, search=search) }}">末页</a>
-                    </li>
-                </ul>
-            </nav>
-            {% endif %}
+            <div class="modal-footer">
+                <button type="button" class="mi-btn mi-btn-primary" data-bs-dismiss="modal">确定</button>
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+function importComputers(input) {
+    if (input.files.length === 0) return;
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    showLoading('正在导入数据...');
+    fetch('{{ url_for("assets.import_computers") }}', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        hideLoading();
+        var resultDiv = document.getElementById('importResult');
+        if (data.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success">' + data.message + '</div>';
+            if (data.errors && data.errors.length > 0) {
+                resultDiv.innerHTML += '<div class="alert alert-warning"><strong>部分错误：</strong><br>' + data.errors.join('<br>') + '</div>';
+            }
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            resultDiv.innerHTML = '<div class="alert alert-danger">' + data.message + '</div>';
+        }
+        new bootstrap.Modal(document.getElementById('importModal')).show();
+    })
+    .catch(function(error) { 
+        hideLoading(); 
+        alert('导入失败: ' + error); 
+    });
+    input.value = '';
+}
+
+// 导出加载
+document.querySelector('[href*="export"]:not([href*="template"])')?.addEventListener('click', function() {
+    showLoading('正在导出数据...');
+});
+</script>
 {% endblock %}

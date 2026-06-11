@@ -21,12 +21,135 @@ def admin_required(f):
     
     return decorated_function
 
+def permission_required(module_code, action='view'):
+    """基于RBAC的细粒度权限校验装饰器
+
+    用法:
+        @permission_required('personnel_list', 'view')
+        @permission_required('personnel_add', 'add')
+        @permission_required('office_computers', 'edit')
+
+    规则:
+        1. admin 角色跳过所有检查
+        2. 查 sys_user_role 获取角色
+        3. 查 sys_module 获取模块ID
+        4. 查 sys_permission 判断操作权限
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('请先登录', 'warning')
+            return redirect(url_for('auth.login'))
+
+        if current_user.role == 'admin':
+            return f(*args, **kwargs)
+
+        from app.models import SysUserRole, SysModule, SysPermission
+
+        role_ids = [
+            r.role_id for r in SysUserRole.query.filter_by(user_id=current_user.id).all()
+        ]
+        if not role_ids:
+            flash('您尚未分配角色，请联系管理员', 'danger')
+            return redirect(url_for('assets.dashboard'))
+
+        module = SysModule.query.filter_by(module_code=module_code).first()
+        if not module:
+            return f(*args, **kwargs)
+
+        perm = SysPermission.query.filter(
+            SysPermission.module_id == module.id,
+            SysPermission.role_id.in_(role_ids)
+        ).first()
+
+        action_field = f'can_{action}'
+
+        if not perm or not getattr(perm, action_field, 0):
+            action_names = {
+                'view': '查看', 'add': '新增', 'edit': '编辑',
+                'delete': '删除', 'export': '导出', 'import': '导入',
+                'audit': '审核', 'approve': '审批'
+            }
+            flash(f'您没有{action_names.get(action, action)}权限', 'danger')
+            return redirect(url_for('assets.dashboard'))
+
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+def get_user_permissions():
+    """获取当前用户的所有权限字典，使用请求级别缓存减少DB查询
+    
+    优化说明：
+    1. 使用 flask.g 对象存储权限缓存，确保每个请求独立
+    2. 避免跨请求共享缓存导致的权限不同步问题
+    3. 减少数据库查询次数
+    """
+    from flask import g
+    from flask_login import current_user
+    from app import db
+    from sqlalchemy import text
+
+    if not current_user.is_authenticated:
+        return {}
+
+    if current_user.role == 'admin':
+        return {}
+
+    # 使用请求级别的缓存（存储在 g 对象中）
+    cache_key = f'_permission_cache_{current_user.id}'
+    
+    # 检查当前请求是否已缓存
+    if hasattr(g, cache_key):
+        return getattr(g, cache_key)
+
+    # 查询数据库获取权限
+    rows = db.session.execute(text("""
+        SELECT m.module_code, p.can_view, p.can_add, p.can_edit, p.can_delete,
+               p.can_export, p.can_import, p.can_audit, p.can_approve
+        FROM sys_permission p
+        JOIN sys_module m ON m.id = p.module_id
+        JOIN sys_user_role ur ON ur.role_id = p.role_id
+        WHERE ur.user_id = :uid AND m.status = 1
+    """), {'uid': current_user.id}).fetchall()
+
+    perms = {}
+    for row in rows:
+        perms[row[0]] = {
+            'view': row[1], 'add': row[2], 'edit': row[3],
+            'delete': row[4], 'export': row[5], 'import': row[6],
+            'audit': row[7], 'approve': row[8]
+        }
+
+    # 存储到请求级别的缓存
+    setattr(g, cache_key, perms)
+    
+    return perms
+
+
+def clear_permission_cache(user_id=None):
+    """清除权限缓存
+    
+    Args:
+        user_id: 指定用户ID，如果为None则清除当前用户缓存
+    """
+    from flask import g
+    from flask_login import current_user
+    
+    target_id = user_id or (current_user.id if current_user.is_authenticated else None)
+    if target_id:
+        cache_key = f'_permission_cache_{target_id}'
+        if hasattr(g, cache_key):
+            delattr(g, cache_key)
+
 def department_permission_required(f):
     """
     部门权限装饰器：
     - admin: 可以查看所有部门数据
     - department_admin: 只能查看和管理自己部门的数据
-    - user: 只能查看自己部门的数据（如果有部门关联）
+    - user: 可以查看数据（数据过滤在路由中处理）
+    
+    注意：此装饰器主要用于验证登录状态，数据过滤逻辑在各个路由中实现
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -38,7 +161,7 @@ def department_permission_required(f):
         if current_user.role == 'admin':
             return f(*args, **kwargs)
         
-        # 如果是部门管理员或用户，需要检查部门权限
+        # 如果是部门管理员，检查部门配置
         if current_user.department_access:
             if not current_user.department_id:
                 flash('您尚未分配部门，请联系管理员', 'warning')
@@ -53,9 +176,8 @@ def department_permission_required(f):
             
             return f(*args, **kwargs)
         
-        # 默认情况，不允许访问
-        flash('您没有权限访问此页面', 'danger')
-        return redirect(url_for('assets.dashboard'))
+        # 普通用户允许访问，数据过滤在路由中处理
+        return f(*args, **kwargs)
     
     return decorated_function
 

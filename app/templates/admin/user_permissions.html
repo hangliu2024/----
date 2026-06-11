@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}用户权限配置 - {{ user.username }} - 资产管理系统{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-shield-check"></i> 权限配置</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">为 {{ user.username }}（{{ user.real_name or '' }}{% if user.emp_id %} · {{ user.emp_id }}{% endif %}）分配角色权限</p>
+    </div>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('admin.users') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    </div>
+</div>
+
+<div class="mi-card" style="max-width:600px">
+    <form method="POST">
+        <div style="display:flex;flex-direction:column;gap:8px">
+            {% for role in roles %}
+            <label style="display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg);border-radius:var(--radius);cursor:pointer;transition:all 0.15s">
+                <input type="checkbox" name="roles" value="{{ role.id }}" id="role_{{ role.id }}" {{ 'checked' if role.id in user_role_ids else '' }} style="width:18px;height:18px">
+                <span>
+                    <strong style="color:var(--text)">{{ role.role_name }}</strong>
+                    {% if role.description %}<span style="color:var(--text-hint);font-size:13px"> — {{ role.description }}</span>{% endif %}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border-light)">
+            <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-circle"></i> 保存权限</button>
+            <a href="{{ url_for('admin.users') }}" class="mi-btn mi-btn-default">返回</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

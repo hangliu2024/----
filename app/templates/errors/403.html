@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>403 - 权限不足</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f8f9fa; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .error-container { text-align: center; padding: 40px; }
+        .error-code { font-size: 8rem; font-weight: 700; color: #dee2e6; line-height: 1; }
+        .error-msg { font-size: 1.25rem; color: #6c757d; margin: 20px 0 30px; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-code">403</div>
+        <p class="error-msg">抱歉，您没有权限访问此页面</p>
+        <a href="{{ url_for('assets.dashboard') }}" class="btn btn-primary btn-lg">返回首页</a>
+    </div>
+</body>
+</html>

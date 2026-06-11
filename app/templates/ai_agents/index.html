@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}AI Agent 工作台{% endblock %}
+
+{% block content %}
+<div class="mi-page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-robot"></i> AI Agent 工作台</h1>
+        <p style="color:var(--text-hint);font-size:14px;margin-top:6px;">智能化AI助手，让工作更高效</p>
+    </div>
+</div>
+
+<!-- Agent 卡片网格 -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;">
+{% for agent_id, agent in agents.items() %}
+    <div class="mi-card" style="cursor:pointer;transition:var(--transition);" 
+         onclick="location.href='{{ url_for(agent.route) }}'">
+        <div class="mi-card-body" style="padding:24px;">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+                <div style="width:48px;height:48px;border-radius:12px;background:{{ agent.color }}15;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="bi {{ agent.icon }}" style="font-size:22px;color:{{ agent.color }};"></i>
+                </div>
+                <div>
+                    <h3 style="font-size:16px;font-weight:600;margin:0;">{{ agent.name }}</h3>
+                    <span class="mi-badge mi-badge-success" style="margin-top:4px;font-size:11px;">可用</span>
+                </div>
+            </div>
+            <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:16px;">{{ agent.description }}</p>
+            <div style="border-top:1px solid var(--border-light);padding-top:14px;">
+                <div style="font-size:12px;color:var(--text-hint);margin-bottom:8px;font-weight:500;">核心能力</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    {% for cap in agent.capabilities[:3] %}
+                    <span class="mi-badge" style="background:{{ agent.color }}10;color:{{ agent.color }};font-size:11px;">{{ cap }}</span>
+                    {% endfor %}
+                    {% if agent.capabilities|length > 3 %}
+                    <span class="mi-badge mi-badge-default" style="font-size:11px;">+{{ agent.capabilities|length - 3 }}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div style="padding:12px 24px;border-top:1px solid var(--border-light);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:13px;color:var(--accent);font-weight:500;">进入工作台</span>
+            <i class="bi bi-arrow-right" style="color:var(--accent);"></i>
+        </div>
+    </div>
+{% endfor %}
+</div>
+
+<!-- 使用说明 -->
+<div class="mi-card" style="margin-top:24px;">
+    <div class="mi-card-body" style="padding:20px 24px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+            <i class="bi bi-lightbulb" style="color:var(--warning);font-size:18px;"></i>
+            <span style="font-size:14px;font-weight:600;">使用指南</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;font-size:13px;color:var(--text-secondary);">
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+                <i class="bi bi-1-circle" style="color:var(--accent);flex-shrink:0;margin-top:2px;"></i>
+                <span><strong>稽查助手</strong>：选择稽查任务，AI自动分析生成检查要点和整改建议</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+                <i class="bi bi-2-circle" style="color:var(--info);flex-shrink:0;margin-top:2px;"></i>
+                <span><strong>填表助手</strong>：输入工号或姓名，自动填充表单，智能校验数据</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+                <i class="bi bi-3-circle" style="color:var(--success);flex-shrink:0;margin-top:2px;"></i>
+                <span><strong>报告助手</strong>：选择报告类型，AI自动汇总数据生成分析报告</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+                <i class="bi bi-4-circle" style="color:var(--danger);flex-shrink:0;margin-top:2px;"></i>
+                <span><strong>风险助手</strong>：一键分析潜在风险，生成预警和处置建议</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

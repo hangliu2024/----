@@ -8,10 +8,22 @@ class RegistrationForm(FlaskForm):
                            validators=[DataRequired(), Length(min=2, max=20)])
     email = StringField('邮箱', 
                         validators=[DataRequired(), Email()])
-    password = PasswordField('密码', validators=[DataRequired()])
+    password = PasswordField('密码', validators=[
+        DataRequired(), Length(min=8, message='密码长度至少8个字符')
+    ])
     confirm_password = PasswordField('确认密码', 
                                      validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('注册')
+
+    def validate_password(self, password):
+        import re
+        pwd = password.data
+        if not re.search(r'[A-Z]', pwd):
+            raise ValidationError('密码必须包含至少一个大写字母')
+        if not re.search(r'[a-z]', pwd):
+            raise ValidationError('密码必须包含至少一个小写字母')
+        if not re.search(r'[0-9]', pwd):
+            raise ValidationError('密码必须包含至少一个数字')
     
     def validate_username(self, username):
         user = User.query.filter_by(username=username.data).first()
@@ -29,32 +41,6 @@ class LoginForm(FlaskForm):
     password = PasswordField('密码', validators=[DataRequired()])
     remember = BooleanField('记住我')
     submit = SubmitField('登录')
-
-# 资产表单
-class TangibleAssetForm(FlaskForm):
-    name = StringField('名称', validators=[DataRequired()])
-    category = SelectField('类别', validators=[DataRequired()], choices=[
-        ('办公电脑', '办公电脑'),
-        ('工控机', '工控机'),
-        ('工作站', '工作站')
-    ])
-    description = StringField('描述')
-    value = StringField('价值', validators=[DataRequired()])
-    purchase_date = StringField('购买日期', validators=[DataRequired()])
-    location = StringField('位置', validators=[DataRequired()])
-    status = StringField('状态', validators=[DataRequired()])
-    assigned_to = StringField('分配给')
-    submit = SubmitField('提交')
-
-class IntangibleAssetForm(FlaskForm):
-    name = StringField('名称', validators=[DataRequired()])
-    category = StringField('类别', validators=[DataRequired()])
-    description = StringField('描述')
-    value = StringField('价值')
-    registration_date = StringField('注册日期', validators=[DataRequired()])
-    expiration_date = StringField('到期日期')
-    status = StringField('状态', validators=[DataRequired()])
-    submit = SubmitField('提交')
 
 # 部门表单
 class DepartmentForm(FlaskForm):

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}案件管理 - 信息资产管理系统{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-briefcase"></i> 案件管理</h1>
+</div>
+
+<div class="mi-stats">
+    <div class="mi-stat-card accent" onclick="location.href='{{ url_for('case_management.collections') }}'" style="cursor:pointer">
+        <div class="mi-stat-label">案例集</div>
+        <div class="mi-stat-value">{{ case_count }}</div>
+        <i class="bi bi-folder2-open mi-stat-icon"></i>
+    </div>
+    <div class="mi-stat-card info" onclick="location.href='{{ url_for('case_management.sop_list') }}'" style="cursor:pointer">
+        <div class="mi-stat-label">调查SOP</div>
+        <div class="mi-stat-value">{{ sop_count }}</div>
+        <i class="bi bi-list-check mi-stat-icon"></i>
+    </div>
+    <div class="mi-stat-card success" onclick="location.href='{{ url_for('case_management.reports') }}'" style="cursor:pointer">
+        <div class="mi-stat-label">调查报告</div>
+        <div class="mi-stat-value">{{ report_count }}</div>
+        <i class="bi bi-file-earmark-text mi-stat-icon"></i>
+    </div>
+</div>
+
+<div class="mi-card">
+    <div class="mi-card-header"><i class="bi bi-grid-3x3-gap"></i> 功能导航</div>
+    <div class="mi-card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px">
+            <a href="{{ url_for('case_management.collections') }}" class="mi-btn mi-btn-default" style="justify-content:center;padding:20px;font-size:15px">
+                <i class="bi bi-folder2-open"></i> 案例集管理
+            </a>
+            <a href="{{ url_for('case_management.sop_list') }}" class="mi-btn mi-btn-default" style="justify-content:center;padding:20px;font-size:15px">
+                <i class="bi bi-list-check"></i> 案件调查SOP
+            </a>
+            <a href="{{ url_for('case_management.reports') }}" class="mi-btn mi-btn-default" style="justify-content:center;padding:20px;font-size:15px">
+                <i class="bi bi-file-earmark-text"></i> 调查报告管理
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

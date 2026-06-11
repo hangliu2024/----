@@ -4,9 +4,11 @@ from datetime import datetime
 from app import db
 from app.models import AuditTask, AuditTaskFeedback, AuditRecord, User, Department
 from app.decorators import admin_required
-from sqlalchemy import or_
 
 audit_bp = Blueprint('audit', __name__, url_prefix='/audit')
+
+def _is_admin():
+    return current_user.role == 'admin'
 
 # 稽查任务列表（管理员视图）
 @audit_bp.route('/tasks')
@@ -19,8 +21,7 @@ def task_list():
     
     query = AuditTask.query
     
-    # 非管理员只能看到分配给自己的任务
-    if current_user.role != 'admin':
+    if not _is_admin():
         query = query.filter_by(assignee_id=current_user.id)
     
     if status:
@@ -79,7 +80,7 @@ def task_detail(task_id):
     task = AuditTask.query.get_or_404(task_id)
     
     # 权限检查：管理员或被分配人可以查看
-    if current_user.role != 'admin' and task.assignee_id != current_user.id:
+    if not _is_admin() and task.assignee_id != current_user.id:
         flash('您没有权限查看此任务', 'danger')
         return redirect(url_for('audit.task_list'))
     
@@ -176,7 +177,7 @@ def record_list():
     query = AuditRecord.query
     
     # 非管理员只能看到自己的记录
-    if current_user.role != 'admin':
+    if not _is_admin():
         query = query.filter_by(audit_by=current_user.id)
     
     records = query.order_by(AuditRecord.created_at.desc()).paginate(page=page, per_page=20)

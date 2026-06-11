@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}编辑演练{% else %}新增演练{% endif %} - 应急管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-megaphone"></i> {% if item %}编辑演练{% else %}新增演练{% endif %}</h1>
+</div>
+<div class="mi-card"><div class="mi-card-body">
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+            <div class="mi-form-group"><label class="mi-label">演练编号 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="drill_no" value="{{ item.drill_no if item else '' }}" class="mi-input" required placeholder="如: DR-2026-001"></div>
+            <div class="mi-form-group"><label class="mi-label">演练名称 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="drill_title" value="{{ item.drill_title if item else '' }}" class="mi-input" required></div>
+            <div class="mi-form-group"><label class="mi-label">关联预案</label>
+                <select name="plan_id" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for p in plans %}<option value="{{ p.id }}" {% if item and item.plan_id==p.id %}selected{% endif %}>{{ p.plan_title }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">演练类型</label>
+                <select name="drill_type" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for t in ['桌面推演','实战演练','综合演练'] %}<option value="{{ t }}" {% if item and item.drill_type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">演练日期</label>
+                <input type="date" name="drill_date" value="{{ item.drill_date if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">演练地点</label>
+                <input type="text" name="drill_location" value="{{ item.drill_location if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">组织方</label>
+                <input type="text" name="organizer" value="{{ item.organizer if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">总体评价</label>
+                <select name="overall_evaluation" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for e in ['优秀','良好','合格','不合格'] %}<option value="{{ e }}" {% if item and item.overall_evaluation==e %}selected{% endif %}>{{ e }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">状态</label>
+                <select name="status" class="mi-input mi-select">
+                    {% for s in [('planned','计划中'),('in_progress','进行中'),('completed','已完成')] %}<option value="{{ s[0] }}" {% if item and item.status==s[0] %}selected{% endif %}>{{ s[1] }}</option>{% endfor %}
+                </select></div>
+        </div>
+        <div class="mi-form-group"><label class="mi-label">参与人员</label>
+            <textarea name="participants" class="mi-input mi-textarea" rows="2">{{ item.participants if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">演练场景</label>
+            <textarea name="drill_scenario" class="mi-input mi-textarea" rows="3">{{ item.drill_scenario if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">演练过程</label>
+            <textarea name="drill_process" class="mi-input mi-textarea" rows="3">{{ item.drill_process if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">发现问题</label>
+            <textarea name="issues_found" class="mi-input mi-textarea" rows="3">{{ item.issues_found if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">改进措施</label>
+            <textarea name="improvement_measures" class="mi-input mi-textarea" rows="3">{{ item.improvement_measures if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">备注</label>
+            <textarea name="remark" class="mi-input mi-textarea" rows="2">{{ item.remark if item else '' }}</textarea></div>
+        <div style="display:flex;gap:12px;padding-top:16px;border-top:1px solid var(--border-light)">
+            <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 保存</button>
+            <a href="{{ url_for('emergency.drills') }}" class="mi-btn mi-btn-default"><i class="bi bi-x-lg"></i> 取消</a>
+        </div>
+    </form>
+</div></div>
+{% endblock %}

@@ -1,132 +1,138 @@
 {% extends "base.html" %}
 
-{% block title %}操作日志{% endblock %}
+{% block title %}操作日志 - 资产管理系统{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="card">
-        <div class="card-header" style="background: linear-gradient(135deg, #fc4a1a 0%, #f7b733 100%); color: white;">
-            <h4 class="mb-0"><i class="bi bi-journal-text"></i> 操作日志</h4>
-        </div>
-        <div class="card-body">
-            <!-- 筛选 -->
-            <form method="GET" class="mb-4">
-                <div class="row g-3">
-                    <div class="col-md-2">
-                        <select class="form-select" name="user_id">
-                            <option value="">全部用户</option>
-                            {% for u in users %}
-                            <option value="{{ u.id }}" {% if user_id == u.id|string %}selected{% endif %}>{{ u.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select class="form-select" name="operation_type">
-                            <option value="">全部操作</option>
-                            <option value="add" {% if operation_type == 'add' %}selected{% endif %}>新增</option>
-                            <option value="edit" {% if operation_type == 'edit' %}selected{% endif %}>编辑</option>
-                            <option value="delete" {% if operation_type == 'delete' %}selected{% endif %}>删除</option>
-                            <option value="view" {% if operation_type == 'view' %}selected{% endif %}>查看</option>
-                            <option value="export" {% if operation_type == 'export' %}selected{% endif %}>导出</option>
-                            <option value="import" {% if operation_type == 'import' %}selected{% endif %}>导入</option>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <select class="form-select" name="module">
-                            <option value="">全部模块</option>
-                            {% for m in modules %}
-                            <option value="{{ m }}" {% if module == m %}selected{% endif %}>{{ m }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <input type="date" class="form-control" name="date_from" value="{{ date_from }}">
-                    </div>
-                    <div class="col-md-2">
-                        <input type="date" class="form-control" name="date_to" value="{{ date_to }}">
-                    </div>
-                    <div class="col-md-2">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i></button>
-                        <a href="{{ url_for('admin.operation_logs') }}" class="btn btn-secondary">重置</a>
-                    </div>
-                </div>
-            </form>
-
-            <!-- 日志列表 -->
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>用户</th>
-                            <th>操作</th>
-                            <th>模块</th>
-                            <th>描述</th>
-                            <th>IP地址</th>
-                            <th>时间</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for log in logs %}
-                        <tr>
-                            <td>{{ log.username or '-' }}</td>
-                            <td>
-                                {% if log.operation_type == 'add' %}
-                                <span class="badge bg-success">新增</span>
-                                {% elif log.operation_type == 'edit' %}
-                                <span class="badge bg-primary">编辑</span>
-                                {% elif log.operation_type == 'delete' %}
-                                <span class="badge bg-danger">删除</span>
-                                {% elif log.operation_type == 'view' %}
-                                <span class="badge bg-info">查看</span>
-                                {% elif log.operation_type == 'export' %}
-                                <span class="badge bg-warning">导出</span>
-                                {% elif log.operation_type == 'import' %}
-                                <span class="badge bg-secondary">导入</span>
-                                {% else %}
-                                <span class="badge bg-secondary">{{ log.operation_type }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ log.module or '-' }}</td>
-                            <td><small>{{ (log.description or '-')[:80] }}{% if log.description and log.description|length > 80 %}...{% endif %}</small></td>
-                            <td>{{ log.ip_address or '-' }}</td>
-                            <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}</td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted">暂无日志记录</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- 分页 -->
-            {% if pagination.pages > 1 %}
-            <nav class="mt-3">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item {{ 'disabled' if not pagination.has_prev else '' }}">
-                        <a class="page-link" href="{{ url_for('admin.operation_logs', page=pagination.prev_num, user_id=user_id, operation_type=operation_type, module=module, date_from=date_from, date_to=date_to) }}">上一页</a>
-                    </li>
-                    {% for page_num in pagination.iter_pages() %}
-                        {% if page_num %}
-                        <li class="page-item {{ 'active' if page_num == pagination.page else '' }}">
-                            <a class="page-link" href="{{ url_for('admin.operation_logs', page=page_num, user_id=user_id, operation_type=operation_type, module=module, date_from=date_from, date_to=date_to) }}">{{ page_num }}</a>
-                        </li>
-                        {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                        {% endif %}
-                    {% endfor %}
-                    <li class="page-item {{ 'disabled' if not pagination.has_next else '' }}">
-                        <a class="page-link" href="{{ url_for('admin.operation_logs', page=pagination.next_num, user_id=user_id, operation_type=operation_type, module=module, date_from=date_from, date_to=date_to) }}">下一页</a>
-                    </li>
-                </ul>
-            </nav>
-            {% endif %}
-
-            <div class="text-muted mt-3">
-                共 {{ pagination.total }} 条记录
-            </div>
-        </div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-journal-text"></i> 操作日志</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">查看系统操作审计记录</p>
     </div>
 </div>
+
+<!-- 筛选 -->
+<div class="mi-card" style="margin-bottom:20px">
+    <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="mi-form-group" style="margin-bottom:0;min-width:150px">
+            <label class="mi-label">用户</label>
+            <select class="mi-input" name="user_id">
+                <option value="">全部用户</option>
+                {% for u in users %}
+                <option value="{{ u.id }}" {% if user_id == u.id|string %}selected{% endif %}>{{ u.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mi-form-group" style="margin-bottom:0;min-width:120px">
+            <label class="mi-label">操作类型</label>
+            <select class="mi-input" name="operation_type">
+                <option value="">全部操作</option>
+                <option value="add" {% if operation_type == 'add' %}selected{% endif %}>新增</option>
+                <option value="edit" {% if operation_type == 'edit' %}selected{% endif %}>编辑</option>
+                <option value="delete" {% if operation_type == 'delete' %}selected{% endif %}>删除</option>
+                <option value="view" {% if operation_type == 'view' %}selected{% endif %}>查看</option>
+                <option value="export" {% if operation_type == 'export' %}selected{% endif %}>导出</option>
+                <option value="import" {% if operation_type == 'import' %}selected{% endif %}>导入</option>
+            </select>
+        </div>
+        <div class="mi-form-group" style="margin-bottom:0;min-width:120px">
+            <label class="mi-label">模块</label>
+            <select class="mi-input" name="module">
+                <option value="">全部模块</option>
+                {% for m in modules %}
+                <option value="{{ m }}" {% if module == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mi-form-group" style="margin-bottom:0;min-width:140px">
+            <label class="mi-label">开始日期</label>
+            <input type="date" class="mi-input" name="date_from" value="{{ date_from }}">
+        </div>
+        <div class="mi-form-group" style="margin-bottom:0;min-width:140px">
+            <label class="mi-label">结束日期</label>
+            <input type="date" class="mi-input" name="date_to" value="{{ date_to }}">
+        </div>
+        <div style="display:flex;gap:8px;padding-bottom:2px">
+            <button type="submit" class="mi-btn mi-btn-primary mi-btn-sm"><i class="bi bi-search"></i> 筛选</button>
+            <a href="{{ url_for('admin.operation_logs') }}" class="mi-btn mi-btn-default mi-btn-sm">重置</a>
+        </div>
+    </form>
+</div>
+
+<div class="mi-card">
+    <div class="mi-table-wrap" style="border:none;border-radius:0">
+        <table class="mi-table">
+            <thead>
+                <tr>
+                    <th>用户</th>
+                    <th>操作</th>
+                    <th>模块</th>
+                    <th>描述</th>
+                    <th>IP地址</th>
+                    <th>时间</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td><span style="font-weight:500">{{ log.username or '-' }}</span></td>
+                    <td>
+                        {% if log.operation_type == 'add' %}
+                        <span class="mi-badge mi-badge-success">新增</span>
+                        {% elif log.operation_type == 'edit' %}
+                        <span class="mi-badge mi-badge-info">编辑</span>
+                        {% elif log.operation_type == 'delete' %}
+                        <span class="mi-badge mi-badge-danger">删除</span>
+                        {% elif log.operation_type == 'view' %}
+                        <span class="mi-badge mi-badge-default">查看</span>
+                        {% elif log.operation_type == 'export' %}
+                        <span class="mi-badge mi-badge-warning">导出</span>
+                        {% elif log.operation_type == 'import' %}
+                        <span class="mi-badge mi-badge-info">导入</span>
+                        {% else %}
+                        <span class="mi-badge mi-badge-default">{{ log.operation_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.module or '-' }}</td>
+                    <td style="font-size:13px;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ (log.description or '-')[:80] }}{% if log.description and log.description|length > 80 %}...{% endif %}</td>
+                    <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:13px">{{ log.ip_address or '-' }}</code></td>
+                    <td style="font-size:13px">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') if log.created_at else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align:center;padding:48px;color:var(--text-hint)">
+                        <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px"></i>
+                        暂无日志记录
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if pagination.pages > 1 %}
+<div style="display:flex;justify-content:center;margin-top:20px">
+    <div style="display:flex;align-items:center;gap:4px">
+        {% if pagination.has_prev %}
+        <a href="{{ url_for('admin.operation_logs', page=pagination.prev_num, user_id=user_id, operation_type=operation_type, module=module, date_from=date_from, date_to=date_to) }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-chevron-left"></i></a>
+        {% endif %}
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == pagination.page %}
+                <span class="mi-btn mi-btn-primary mi-btn-sm" style="min-width:36px">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('admin.operation_logs', page=page_num, user_id=user_id, operation_type=operation_type, module=module, date_from=date_from, date_to=date_to) }}" class="mi-btn mi-btn-default mi-btn-sm" style="min-width:36px">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+            <span style="padding:0 6px;color:var(--text-hint)">...</span>
+            {% endif %}
+        {% endfor %}
+        {% if pagination.has_next %}
+        <a href="{{ url_for('admin.operation_logs', page=pagination.next_num, user_id=user_id, operation_type=operation_type, module=module, date_from=date_from, date_to=date_to) }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-chevron-right"></i></a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<div style="margin-top:12px;font-size:13px;color:var(--text-hint)">共 {{ pagination.total }} 条记录</div>
 {% endblock %}

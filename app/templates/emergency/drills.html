@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}应急演练 - 应急管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-megaphone"></i> 应急演练</h1>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('emergency.drill_add') }}" class="mi-btn mi-btn-primary"><i class="bi bi-plus-lg"></i> 新增演练</a>
+    </div>
+</div>
+<div class="mi-card"><div class="mi-card-body">
+    <form method="get" class="mi-toolbar">
+        <div class="mi-search"><i class="bi bi-search"></i><input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索编号/名称/组织方..." class="mi-input"></div>
+        <select name="drill_type" class="mi-input mi-select" style="width:140px">
+            <option value="">全部类型</option>
+            {% for t in ['桌面推演','实战演练','综合演练'] %}<option value="{{ t }}" {% if drill_type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+        </select>
+        <select name="status" class="mi-input mi-select" style="width:120px">
+            <option value="">全部状态</option>
+            <option value="planned" {% if status=='planned' %}selected{% endif %}>计划中</option>
+            <option value="in_progress" {% if status=='in_progress' %}selected{% endif %}>进行中</option>
+            <option value="completed" {% if status=='completed' %}selected{% endif %}>已完成</option>
+        </select>
+        <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-search"></i> 查询</button>
+        <a href="{{ url_for('emergency.drills') }}" class="mi-btn mi-btn-default">重置</a>
+    </form>
+    <div class="mi-table-wrap"><table class="mi-table"><thead><tr>
+        <th>演练编号</th><th>演练名称</th><th>类型</th><th>关联预案</th><th>日期</th><th>组织方</th><th>评价</th><th>状态</th><th>操作</th>
+    </tr></thead><tbody>
+    {% for item in items %}
+    <tr>
+        <td>{{ item.drill_no }}</td><td>{{ item.drill_title }}</td>
+        <td><span class="mi-badge mi-badge-info">{{ item.drill_type or '-' }}</span></td>
+        <td>{{ item.plan.plan_title if item.plan else '-' }}</td>
+        <td>{{ item.drill_date or '-' }}</td><td>{{ item.organizer or '-' }}</td>
+        <td>{% if item.overall_evaluation=='优秀' %}<span class="mi-badge mi-badge-success">{{ item.overall_evaluation }}</span>{% elif item.overall_evaluation=='良好' %}<span class="mi-badge mi-badge-primary">{{ item.overall_evaluation }}</span>{% elif item.overall_evaluation=='合格' %}<span class="mi-badge mi-badge-warning">{{ item.overall_evaluation }}</span>{% elif item.overall_evaluation=='不合格' %}<span class="mi-badge mi-badge-danger">{{ item.overall_evaluation }}</span>{% else %}{{ item.overall_evaluation or '-' }}{% endif %}</td>
+        <td>{% if item.status=='completed' %}<span class="mi-badge mi-badge-success">已完成</span>{% elif item.status=='in_progress' %}<span class="mi-badge mi-badge-warning">进行中</span>{% else %}<span class="mi-badge mi-badge-default">计划中</span>{% endif %}</td>
+        <td>
+            <a href="{{ url_for('emergency.drill_edit', id=item.id) }}" class="mi-btn mi-btn-ghost mi-btn-sm"><i class="bi bi-pencil"></i> 编辑</a>
+            <form method="post" action="{{ url_for('emergency.drill_delete', id=item.id) }}" style="display:inline" onsubmit="return confirm('确认删除?')"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="mi-btn mi-btn-ghost mi-btn-sm" style="color:var(--danger)"><i class="bi bi-trash"></i></button></form>
+        </td>
+    </tr>{% endfor %}
+    {% if not items %}<tr><td colspan="9" style="text-align:center;color:var(--text-hint);padding:40px">暂无数据</td></tr>{% endif %}
+    </tbody></table></div>
+    {% if pagination.pages > 1 %}<div class="mi-pagination">
+        {% if pagination.has_prev %}<a href="{{ url_for('emergency.drills', page=pagination.prev_num, keyword=keyword, drill_type=drill_type, status=status) }}" class="mi-page-link"><i class="bi bi-chevron-left"></i></a>{% endif %}
+        {% for p in pagination.iter_pages() %}{% if p %}<a href="{{ url_for('emergency.drills', page=p, keyword=keyword, drill_type=drill_type, status=status) }}" class="mi-page-link {% if p==pagination.page %}mi-page-active{% endif %}">{{ p }}</a>{% endif %}{% endfor %}
+        {% if pagination.has_next %}<a href="{{ url_for('emergency.drills', page=pagination.next_num, keyword=keyword, drill_type=drill_type, status=status) }}" class="mi-page-link"><i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>{% endif %}
+</div></div>
+{% endblock %}

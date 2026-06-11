@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% block title %}案件调查SOP - 案件管理{% endblock %}
+{% block content %}
+<style>
+.sop-doc-view { max-width: 900px; margin: 0 auto; }
+.sop-doc-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    position: relative;
+}
+.sop-doc-header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+    color: #fff;
+    padding: 24px 32px;
+    border-radius: 4px 4px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+.sop-doc-header h2 { margin: 0; font-size: 20px; font-weight: 600; }
+.sop-doc-header .sop-no { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+.sop-doc-header .sop-badges { display: flex; gap: 8px; margin-top: 8px; }
+.sop-doc-header .sop-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+}
+.sop-doc-header .sop-status-published { background: rgba(76,175,80,0.3); }
+.sop-doc-header .sop-status-draft { background: rgba(255,193,7,0.3); }
+.sop-doc-header .sop-status-archived { background: rgba(158,158,158,0.3); }
+.sop-doc-actions { display: flex; gap: 8px; }
+.sop-doc-actions a, .sop-doc-actions button {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s;
+}
+.sop-doc-actions a:hover, .sop-doc-actions button:hover { background: rgba(255,255,255,0.25); }
+.sop-doc-body { padding: 24px 32px; }
+.sop-meta-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed #e0e0e0;
+    margin-bottom: 20px;
+}
+.sop-meta-item { font-size: 13px; }
+.sop-meta-item .meta-label { color: #999; margin-bottom: 2px; }
+.sop-meta-item .meta-value { color: #333; font-weight: 500; }
+.sop-section { margin-bottom: 18px; }
+.sop-section-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a237e;
+    padding-left: 10px;
+    border-left: 3px solid #1a237e;
+    margin-bottom: 8px;
+}
+.sop-section-content {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #444;
+    padding-left: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.sop-empty-doc {
+    text-align: center;
+    padding: 60px 20px;
+    color: #999;
+    font-size: 15px;
+}
+.sop-toolbar-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #f5f6fa;
+    padding: 12px 0;
+    margin: -16px -24px 20px;
+    padding: 12px 24px;
+    border-bottom: 1px solid #e0e0e0;
+}
+</style>
+
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-file-earmark-text"></i> 案件调查SOP</h1>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('case_management.sop_add') }}" class="mi-btn mi-btn-primary"><i class="bi bi-plus-lg"></i> 新增SOP</a>
+    </div>
+</div>
+
+<div class="sop-toolbar-sticky">
+    <form method="get" class="mi-toolbar" style="margin-bottom:0">
+        <div class="mi-search"><i class="bi bi-search"></i><input type="text" name="keyword" value="{{ keyword }}" placeholder="搜索编号/标题/内容..." class="mi-input"></div>
+        <select name="sop_type" class="mi-input mi-select" style="width:140px">
+            <option value="">全部类型</option>
+            {% for t in ['信息安全','数据泄露','违规操作','其他'] %}
+            <option value="{{ t }}" {% if sop_type==t %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+        </select>
+        <select name="status" class="mi-input mi-select" style="width:120px">
+            <option value="">全部状态</option>
+            <option value="draft" {% if status=='draft' %}selected{% endif %}>草稿</option>
+            <option value="published" {% if status=='published' %}selected{% endif %}>已发布</option>
+            <option value="archived" {% if status=='archived' %}selected{% endif %}>已归档</option>
+        </select>
+        <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-search"></i> 查询</button>
+        <a href="{{ url_for('case_management.sop_list') }}" class="mi-btn mi-btn-default">重置</a>
+    </form>
+</div>
+
+<div class="sop-doc-view">
+    {% for item in items %}
+    <div class="sop-doc-card">
+        <div class="sop-doc-header">
+            <div>
+                <h2>{{ item.sop_title }}</h2>
+                <div class="sop-no">{{ item.sop_no }}</div>
+                <div class="sop-badges">
+                    {% if item.sop_type %}<span class="sop-badge">{{ item.sop_type }}</span>{% endif %}
+                    {% if item.sop_version %}<span class="sop-badge">v{{ item.sop_version }}</span>{% endif %}
+                    <span class="sop-badge sop-status-{{ item.status or 'draft' }}">
+                        {% if item.status=='published' %}已发布{% elif item.status=='archived' %}已归档{% else %}草稿{% endif %}
+                    </span>
+                </div>
+            </div>
+            <div class="sop-doc-actions">
+                <a href="{{ url_for('case_management.sop_view', id=item.id) }}"><i class="bi bi-file-earmark-text"></i> 查看原文</a>
+                <a href="{{ url_for('case_management.sop_edit', id=item.id) }}"><i class="bi bi-pencil"></i> 编辑</a>
+                <form method="post" action="{{ url_for('case_management.sop_delete', id=item.id) }}" style="display:inline" onsubmit="return confirm('确认删除该SOP?')">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit"><i class="bi bi-trash"></i> 删除</button>
+                </form>
+            </div>
+        </div>
+        <div class="sop-doc-body">
+            <div class="sop-meta-row">
+                <div class="sop-meta-item">
+                    <div class="meta-label">适用类型</div>
+                    <div class="meta-value">{{ item.sop_type or '-' }}</div>
+                </div>
+                <div class="sop-meta-item">
+                    <div class="meta-label">责任角色</div>
+                    <div class="meta-value">{{ item.responsible_role or '-' }}</div>
+                </div>
+                <div class="sop-meta-item">
+                    <div class="meta-label">版本号</div>
+                    <div class="meta-value">{{ item.sop_version or '-' }}</div>
+                </div>
+            </div>
+
+            {% if item.applicable_scope %}
+            <div class="sop-section">
+                <div class="sop-section-title">适用范围</div>
+                <div class="sop-section-content">{{ item.applicable_scope }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.investigation_steps %}
+            <div class="sop-section">
+                <div class="sop-section-title">调查步骤</div>
+                <div class="sop-section-content">{{ item.investigation_steps }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.evidence_requirements %}
+            <div class="sop-section">
+                <div class="sop-section-title">证据要求</div>
+                <div class="sop-section-content">{{ item.evidence_requirements }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.timeline_requirements %}
+            <div class="sop-section">
+                <div class="sop-section-title">时限要求</div>
+                <div class="sop-section-content">{{ item.timeline_requirements }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.approval_process %}
+            <div class="sop-section">
+                <div class="sop-section-title">审批流程</div>
+                <div class="sop-section-content">{{ item.approval_process }}</div>
+            </div>
+            {% endif %}
+
+            {% if item.remark %}
+            <div class="sop-section">
+                <div class="sop-section-title">备注</div>
+                <div class="sop-section-content">{{ item.remark }}</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not items %}
+    <div class="sop-doc-card">
+        <div class="sop-empty-doc">
+            <i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:12px"></i>
+            暂无SOP数据
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if pagination.pages > 1 %}
+<div class="mi-pagination" style="margin-top:16px">
+    {% if pagination.has_prev %}<a href="{{ url_for('case_management.sop_list', page=pagination.prev_num, keyword=keyword, sop_type=sop_type, status=status) }}" class="mi-page-link"><i class="bi bi-chevron-left"></i></a>{% endif %}
+    {% for p in pagination.iter_pages() %}{% if p %}<a href="{{ url_for('case_management.sop_list', page=p, keyword=keyword, sop_type=sop_type, status=status) }}" class="mi-page-link {% if p==pagination.page %}mi-page-active{% endif %}">{{ p }}</a>{% endif %}{% endfor %}
+    {% if pagination.has_next %}<a href="{{ url_for('case_management.sop_list', page=pagination.next_num, keyword=keyword, sop_type=sop_type, status=status) }}" class="mi-page-link"><i class="bi bi-chevron-right"></i></a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}

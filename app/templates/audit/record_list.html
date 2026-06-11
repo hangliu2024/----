@@ -1,96 +1,96 @@
 {% extends "base.html" %}
 
-{% block title %}稽查记录{% endblock %}
+{% block title %}稽查记录列表 - 资产管理系统{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-journal-text"></i> 稽查记录
-                    </h3>
-                    <div class="card-tools">
-                        <a href="{{ url_for('audit.create_record') }}" class="btn btn-primary btn-sm">
-                            <i class="fas fa-plus"></i> 创建记录
-                        </a>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th>记录编号</th>
-                                <th>稽查类型</th>
-                                <th>稽查范围</th>
-                                <th>稽查日期</th>
-                                <th>状态</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for record in records.items %}
-                            <tr>
-                                <td>{{ record.id }}</td>
-                                <td>{{ record.audit_type }}</td>
-                                <td>{{ record.audit_scope or '-' }}</td>
-                                <td>{{ record.audit_date.strftime('%Y-%m-%d') if record.audit_date else '-' }}</td>
-                                <td>
-                                    {% if record.status == 'draft' %}
-                                    <span class="badge badge-secondary">草稿</span>
-                                    {% elif record.status == 'submitted' %}
-                                    <span class="badge badge-primary">已提交</span>
-                                    {% elif record.status == 'approved' %}
-                                    <span class="badge badge-success">已审核</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    <a href="#" class="btn btn-info btn-xs">
-                                        <i class="fas fa-eye"></i> 查看
-                                    </a>
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center">暂无记录</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-
-                    {% if records.pages > 1 %}
-                    <nav>
-                        <ul class="pagination justify-content-center">
-                            {% if records.has_prev %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('audit.record_list', page=records.prev_num) }}">上一页</a>
-                            </li>
-                            {% endif %}
-                            
-                            {% for page_num in records.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
-                                {% if page_num %}
-                                    <li class="page-item {% if page_num == records.page %}active{% endif %}">
-                                        <a class="page-link" href="{{ url_for('audit.record_list', page=page_num) }}">{{ page_num }}</a>
-                                    </li>
-                                {% else %}
-                                    <li class="page-item disabled">
-                                        <span class="page-link">...</span>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-                            
-                            {% if records.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="{{ url_for('audit.record_list', page=records.next_num) }}">下一页</a>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                    {% endif %}
-                </div>
-            </div>
-        </div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-journal-text"></i> 稽查记录列表</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">查看所有稽查记录</p>
     </div>
 </div>
+
+<div class="mi-card">
+    <div class="mi-table-wrap" style="border:none;border-radius:0">
+        <table class="mi-table">
+            <thead>
+                <tr>
+                    <th>记录编号</th>
+                    <th>关联任务</th>
+                    <th>记录人</th>
+                    <th>记录时间</th>
+                    <th>记录类型</th>
+                    <th>结果</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records.items %}
+                <tr>
+                    <td><code style="background:var(--bg);padding:2px 8px;border-radius:4px;font-size:13px">{{ record.record_no }}</code></td>
+                    <td>{{ record.task.task_title if record.task else '-' }}</td>
+                    <td>{{ record.created_by.username if record.created_by else '-' }}</td>
+                    <td>{{ record.created_at.strftime('%Y-%m-%d %H:%M') if record.created_at else '-' }}</td>
+                    <td>
+                        {% if record.record_type == 'inspection' %}
+                        <span class="mi-badge mi-badge-info">巡检</span>
+                        {% elif record.record_type == 'investigation' %}
+                        <span class="mi-badge mi-badge-warning">调查</span>
+                        {% elif record.record_type == 'verification' %}
+                        <span class="mi-badge mi-badge-success">验证</span>
+                        {% else %}
+                        <span class="mi-badge mi-badge-default">{{ record.record_type }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if record.result == 'pass' %}
+                        <span class="mi-badge mi-badge-success">通过</span>
+                        {% elif record.result == 'fail' %}
+                        <span class="mi-badge mi-badge-danger">不通过</span>
+                        {% elif record.result == 'pending' %}
+                        <span class="mi-badge mi-badge-default">待定</span>
+                        {% else %}
+                        <span class="mi-badge mi-badge-default">{{ record.result or '-' }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('audit.view_record', record_id=record.id) }}" class="mi-btn mi-btn-ghost mi-btn-sm" title="查看"><i class="bi bi-eye"></i></a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align:center;padding:48px;color:var(--text-hint)">
+                        <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px"></i>
+                        暂无稽查记录
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if records.pages > 1 %}
+<div style="display:flex;justify-content:center;margin-top:20px">
+    <div style="display:flex;align-items:center;gap:4px">
+        {% if records.has_prev %}
+        <a href="{{ url_for('audit.record_list', page=records.prev_num) }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-chevron-left"></i></a>
+        {% endif %}
+        {% for page_num in records.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+            {% if page_num %}
+                {% if page_num == records.page %}
+                <span class="mi-btn mi-btn-primary mi-btn-sm" style="min-width:36px">{{ page_num }}</span>
+                {% else %}
+                <a href="{{ url_for('audit.record_list', page=page_num) }}" class="mi-btn mi-btn-default mi-btn-sm" style="min-width:36px">{{ page_num }}</a>
+                {% endif %}
+            {% else %}
+            <span style="padding:0 6px;color:var(--text-hint)">...</span>
+            {% endif %}
+        {% endfor %}
+        {% if records.has_next %}
+        <a href="{{ url_for('audit.record_list', page=records.next_num) }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-chevron-right"></i></a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

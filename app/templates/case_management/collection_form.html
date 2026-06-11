@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}编辑案例{% else %}新增案例{% endif %} - 案件管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-folder2-open"></i> {% if item %}编辑案例{% else %}新增案例{% endif %}</h1>
+</div>
+
+<div class="mi-card">
+    <div class="mi-card-body">
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+                <div class="mi-form-group">
+                    <label class="mi-label">案例编号 <span style="color:var(--danger)">*</span></label>
+                    <input type="text" name="case_no" value="{{ item.case_no if item else '' }}" class="mi-input" required placeholder="如: CASE-2026-001">
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">案例标题 <span style="color:var(--danger)">*</span></label>
+                    <input type="text" name="case_title" value="{{ item.case_title if item else '' }}" class="mi-input" required>
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">案例类型</label>
+                    <select name="case_type" class="mi-input mi-select">
+                        <option value="">请选择</option>
+                        {% for t in ['信息安全','数据泄露','违规操作','其他'] %}
+                        <option value="{{ t }}" {% if item and item.case_type==t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">案例等级</label>
+                    <select name="case_level" class="mi-input mi-select">
+                        <option value="">请选择</option>
+                        {% for l in ['一般','较大','重大','特别重大'] %}
+                        <option value="{{ l }}" {% if item and item.case_level==l %}selected{% endif %}>{{ l }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">案例来源</label>
+                    <input type="text" name="case_source" value="{{ item.case_source if item else '' }}" class="mi-input">
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">发生时间</label>
+                    <input type="date" name="case_date" value="{{ item.case_date if item else '' }}" class="mi-input">
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">涉及部门</label>
+                    <input type="text" name="dept_name" value="{{ item.dept_name if item else '' }}" class="mi-input">
+                </div>
+                <div class="mi-form-group">
+                    <label class="mi-label">状态</label>
+                    <select name="status" class="mi-input mi-select">
+                        {% for s in [('draft','草稿'),('published','已发布'),('archived','已归档')] %}
+                        <option value="{{ s[0] }}" {% if item and item.status==s[0] %}selected{% endif %}>{{ s[1] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">案例描述</label>
+                <textarea name="description" class="mi-input mi-textarea" rows="3">{{ item.description if item else '' }}</textarea>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">原因分析</label>
+                <textarea name="cause_analysis" class="mi-input mi-textarea" rows="3">{{ item.cause_analysis if item else '' }}</textarea>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">处理结果</label>
+                <textarea name="handling_result" class="mi-input mi-textarea" rows="3">{{ item.handling_result if item else '' }}</textarea>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">经验教训</label>
+                <textarea name="lessons_learned" class="mi-input mi-textarea" rows="3">{{ item.lessons_learned if item else '' }}</textarea>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">预防措施</label>
+                <textarea name="prevention_measures" class="mi-input mi-textarea" rows="3">{{ item.prevention_measures if item else '' }}</textarea>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">备注</label>
+                <textarea name="remark" class="mi-input mi-textarea" rows="2">{{ item.remark if item else '' }}</textarea>
+            </div>
+            <div style="display:flex;gap:12px;padding-top:16px;border-top:1px solid var(--border-light)">
+                <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 保存</button>
+                <a href="{{ url_for('case_management.collections') }}" class="mi-btn mi-btn-default"><i class="bi bi-x-lg"></i> 取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -31,7 +31,7 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(60), nullable=False)
+    password = db.Column(db.String(256), nullable=False)
     role = db.Column(db.String(20), nullable=False, default='user')  # admin, department_admin, user
     department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=True)
     department_access = db.Column(db.Boolean, nullable=False, default=False)  # 是否只查看自己部门数据
@@ -356,83 +356,116 @@ class ClassifiedPersonnel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     emp_id = db.Column(db.String(20), nullable=True)
     emp_name = db.Column(db.String(50), nullable=True)
-    dept_id = db.Column(db.String(20), nullable=True)
+    dept_id = db.Column(db.Integer, nullable=True)
     dept_name = db.Column(db.String(100), nullable=True)
+    position = db.Column(db.String(50), nullable=True)
+    classification_level = db.Column(db.String(20), nullable=True)
+    training_record = db.Column(db.String(10), nullable=True)
     agreement_type = db.Column(db.String(50), nullable=True)
+    agreement_sign_date = db.Column(db.String(30), nullable=True)
+    status = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     signing_date = db.Column(db.String(20), nullable=True)
     expiration_date = db.Column(db.String(20), nullable=True)
-    status = db.Column(db.String(20), nullable=True)
     remark = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 # 涉密存储介质模型
 class ClassifiedMedia(db.Model):
     __tablename__ = 'classified_media'
     
     id = db.Column(db.Integer, primary_key=True)
-    media_number = db.Column(db.String(50), nullable=True)
-    media_type = db.Column(db.String(50), nullable=True)
-    capacity = db.Column(db.String(20), nullable=True)
-    dept_id = db.Column(db.String(20), nullable=True)
+    media_id = db.Column(db.String(50), nullable=True)
+    media_type = db.Column(db.String(20), nullable=True)
+    brand_model = db.Column(db.String(100), nullable=True)
+    serial_no = db.Column(db.String(100), nullable=True)
+    classification = db.Column(db.String(20), nullable=True)
+    custodian_id = db.Column(db.String(20), nullable=True)
+    custodian_name = db.Column(db.String(50), nullable=True)
+    dept_id = db.Column(db.Integer, nullable=True)
     dept_name = db.Column(db.String(100), nullable=True)
+    purpose = db.Column(db.String(200), nullable=True)
+    status = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    media_number = db.Column(db.String(50), nullable=True)
+    capacity = db.Column(db.String(20), nullable=True)
     responsible_name = db.Column(db.String(50), nullable=True)
     responsible_emp_id = db.Column(db.String(20), nullable=True)
-    purpose = db.Column(db.String(100), nullable=True)
-    status = db.Column(db.String(20), nullable=True)
     remark = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 # 信息安全区域模型
 class SecurityZone(db.Model):
     __tablename__ = 'security_zone'
     
     id = db.Column(db.Integer, primary_key=True)
-    zone_code = db.Column(db.String(20), nullable=True)
+    zone_id = db.Column(db.String(50), nullable=True)
     zone_name = db.Column(db.String(100), nullable=True)
-    zone_level = db.Column(db.String(20), nullable=True)
-    dept_id = db.Column(db.String(20), nullable=True)
+    zone_type = db.Column(db.String(20), nullable=True)
+    location = db.Column(db.String(200), nullable=True)
+    manager_id = db.Column(db.String(20), nullable=True)
+    manager_name = db.Column(db.String(50), nullable=True)
+    dept_id = db.Column(db.Integer, nullable=True)
     dept_name = db.Column(db.String(100), nullable=True)
+    status = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    zone_code = db.Column(db.String(20), nullable=True)
+    zone_level = db.Column(db.String(20), nullable=True)
     responsible_name = db.Column(db.String(50), nullable=True)
     responsible_emp_id = db.Column(db.String(20), nullable=True)
-    location = db.Column(db.String(100), nullable=True)
-    status = db.Column(db.String(20), nullable=True)
     remark = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 # 电子涉密文件模型
 class ElectronicDocument(db.Model):
     __tablename__ = 'electronic_document'
     
     id = db.Column(db.Integer, primary_key=True)
-    doc_number = db.Column(db.String(50), nullable=True)
+    doc_id = db.Column(db.String(50), nullable=True)
     doc_title = db.Column(db.String(200), nullable=True)
-    doc_level = db.Column(db.String(20), nullable=True)
-    dept_id = db.Column(db.String(20), nullable=True)
+    classification = db.Column(db.String(20), nullable=True)
+    file_format = db.Column(db.String(50), nullable=True)
+    drafter_id = db.Column(db.String(20), nullable=True)
+    drafter_name = db.Column(db.String(50), nullable=True)
+    draft_dept = db.Column(db.String(100), nullable=True)
+    storage_path = db.Column(db.String(500), nullable=True)
+    custodian_id = db.Column(db.String(20), nullable=True)
+    custodian_name = db.Column(db.String(50), nullable=True)
+    dept_id = db.Column(db.Integer, nullable=True)
     dept_name = db.Column(db.String(100), nullable=True)
+    doc_status = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    doc_number = db.Column(db.String(50), nullable=True)
+    doc_level = db.Column(db.String(20), nullable=True)
     responsible_name = db.Column(db.String(50), nullable=True)
     responsible_emp_id = db.Column(db.String(20), nullable=True)
     file_path = db.Column(db.String(200), nullable=True)
-    doc_status = db.Column(db.String(20), nullable=True)
     remark = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 # 纸质涉密文件模型
 class PaperDocument(db.Model):
     __tablename__ = 'paper_document'
     
     id = db.Column(db.Integer, primary_key=True)
-    doc_number = db.Column(db.String(50), nullable=True)
+    doc_id = db.Column(db.String(50), nullable=True)
     doc_title = db.Column(db.String(200), nullable=True)
-    doc_level = db.Column(db.String(20), nullable=True)
-    dept_id = db.Column(db.String(20), nullable=True)
+    classification = db.Column(db.String(20), nullable=True)
+    copies = db.Column(db.Integer, nullable=True)
+    pages = db.Column(db.Integer, nullable=True)
+    drafter_id = db.Column(db.String(20), nullable=True)
+    drafter_name = db.Column(db.String(50), nullable=True)
+    holder_id = db.Column(db.String(20), nullable=True)
+    holder_name = db.Column(db.String(50), nullable=True)
+    storage_location = db.Column(db.String(200), nullable=True)
+    custodian_id = db.Column(db.String(20), nullable=True)
+    custodian_name = db.Column(db.String(50), nullable=True)
+    dept_id = db.Column(db.Integer, nullable=True)
     dept_name = db.Column(db.String(100), nullable=True)
+    doc_status = db.Column(db.String(20), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    doc_number = db.Column(db.String(50), nullable=True)
+    doc_level = db.Column(db.String(20), nullable=True)
     responsible_name = db.Column(db.String(50), nullable=True)
     responsible_emp_id = db.Column(db.String(20), nullable=True)
     quantity = db.Column(db.Integer, nullable=True)
-    storage_location = db.Column(db.String(100), nullable=True)
-    doc_status = db.Column(db.String(20), nullable=True)
     remark = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 # 稽查任务模型
 class AuditTask(db.Model):
@@ -492,6 +525,154 @@ class AuditRecord(db.Model):
     
     auditor = db.relationship('User', backref='audit_records')
 
+# ==================== 案件管理模块 ====================
+
+# 案例集模型
+class CaseCollection(db.Model):
+    __tablename__ = 'case_collection'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    case_no = db.Column(db.String(50), nullable=False, unique=True)  # 案例编号
+    case_title = db.Column(db.String(200), nullable=False)  # 案例标题
+    case_type = db.Column(db.String(50), nullable=True)  # 案例类型：信息安全/数据泄露/违规操作/其他
+    case_level = db.Column(db.String(20), nullable=True)  # 案例等级：一般/较大/重大/特别重大
+    case_source = db.Column(db.String(100), nullable=True)  # 案例来源
+    case_date = db.Column(db.String(20), nullable=True)  # 发生时间
+    dept_name = db.Column(db.String(100), nullable=True)  # 涉及部门
+    description = db.Column(db.Text, nullable=True)  # 案例描述
+    cause_analysis = db.Column(db.Text, nullable=True)  # 原因分析
+    handling_result = db.Column(db.Text, nullable=True)  # 处理结果
+    lessons_learned = db.Column(db.Text, nullable=True)  # 经验教训
+    prevention_measures = db.Column(db.Text, nullable=True)  # 预防措施
+    status = db.Column(db.String(20), default='draft')  # 状态：draft/published/archived
+    created_by = db.Column(db.Integer, nullable=True)  # 创建人ID
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    remark = db.Column(db.Text, nullable=True)  # 备注
+
+# 案件调查SOP模型
+class InvestigationSOP(db.Model):
+    __tablename__ = 'investigation_sop'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    sop_no = db.Column(db.String(50), nullable=False, unique=True)  # SOP编号
+    sop_title = db.Column(db.String(200), nullable=False)  # SOP标题
+    sop_type = db.Column(db.String(50), nullable=True)  # 适用类型：信息安全/数据泄露/违规操作/其他
+    sop_version = db.Column(db.String(20), nullable=True)  # 版本号
+    applicable_scope = db.Column(db.Text, nullable=True)  # 适用范围
+    investigation_steps = db.Column(db.Text, nullable=True)  # 调查步骤
+    evidence_requirements = db.Column(db.Text, nullable=True)  # 证据要求
+    timeline_requirements = db.Column(db.Text, nullable=True)  # 时限要求
+    responsible_role = db.Column(db.String(100), nullable=True)  # 责任角色
+    approval_process = db.Column(db.Text, nullable=True)  # 审批流程
+    status = db.Column(db.String(20), default='draft')  # 状态：draft/published/archived
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    remark = db.Column(db.Text, nullable=True)
+    full_content = db.Column(db.Text, nullable=True)  # 原文全文内容（HTML格式）
+
+# 调查报告模型
+class InvestigationReport(db.Model):
+    __tablename__ = 'investigation_report'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    report_no = db.Column(db.String(50), nullable=False, unique=True)  # 报告编号
+    report_title = db.Column(db.String(200), nullable=False)  # 报告标题
+    case_id = db.Column(db.Integer, db.ForeignKey('case_collection.id'), nullable=True)  # 关联案例
+    sop_id = db.Column(db.Integer, db.ForeignKey('investigation_sop.id'), nullable=True)  # 关联SOP
+    report_type = db.Column(db.String(50), nullable=True)  # 报告类型：初步调查/深入调查/结案报告
+    investigation_date = db.Column(db.String(20), nullable=True)  # 调查日期
+    investigator = db.Column(db.String(100), nullable=True)  # 调查人员
+    dept_name = db.Column(db.String(100), nullable=True)  # 涉及部门
+    incident_summary = db.Column(db.Text, nullable=True)  # 事件概述
+    investigation_process = db.Column(db.Text, nullable=True)  # 调查过程
+    findings = db.Column(db.Text, nullable=True)  # 调查发现
+    evidence_description = db.Column(db.Text, nullable=True)  # 证据描述
+    conclusion = db.Column(db.Text, nullable=True)  # 调查结论
+    suggestions = db.Column(db.Text, nullable=True)  # 处理建议
+    status = db.Column(db.String(20), default='draft')  # 状态：draft/submitted/approved/rejected
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    remark = db.Column(db.Text, nullable=True)
+    
+    case = db.relationship('CaseCollection', backref='reports')
+    sop = db.relationship('InvestigationSOP', backref='reports')
+
+# ==================== 应急管理模块 ====================
+
+# 应急预案模型
+class EmergencyPlan(db.Model):
+    __tablename__ = 'emergency_plan'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    plan_no = db.Column(db.String(50), nullable=False, unique=True)  # 预案编号
+    plan_title = db.Column(db.String(200), nullable=False)  # 预案名称
+    plan_type = db.Column(db.String(50), nullable=True)  # 预案类型：信息安全/网络攻击/数据泄露/自然灾害/设备故障/其他
+    plan_level = db.Column(db.String(20), nullable=True)  # 预案等级：一级/二级/三级/四级
+    applicable_scope = db.Column(db.Text, nullable=True)  # 适用范围
+    trigger_conditions = db.Column(db.Text, nullable=True)  # 启动条件
+    response_procedures = db.Column(db.Text, nullable=True)  # 响应流程
+    resource_requirements = db.Column(db.Text, nullable=True)  # 资源需求
+    communication_plan = db.Column(db.Text, nullable=True)  # 通讯计划
+    recovery_procedures = db.Column(db.Text, nullable=True)  # 恢复流程
+    dept_name = db.Column(db.String(100), nullable=True)  # 责任部门
+    responsible_person = db.Column(db.String(50), nullable=True)  # 责任人
+    version = db.Column(db.String(20), nullable=True)  # 版本号
+    status = db.Column(db.String(20), default='draft')  # 状态：draft/published/archived
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    remark = db.Column(db.Text, nullable=True)
+
+# 应急演练模型
+class EmergencyDrill(db.Model):
+    __tablename__ = 'emergency_drill'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    drill_no = db.Column(db.String(50), nullable=False, unique=True)  # 演练编号
+    drill_title = db.Column(db.String(200), nullable=False)  # 演练名称
+    plan_id = db.Column(db.Integer, db.ForeignKey('emergency_plan.id'), nullable=True)  # 关联预案
+    drill_type = db.Column(db.String(50), nullable=True)  # 演练类型：桌面推演/实战演练/综合演练
+    drill_date = db.Column(db.String(20), nullable=True)  # 演练日期
+    drill_location = db.Column(db.String(200), nullable=True)  # 演练地点
+    organizer = db.Column(db.String(100), nullable=True)  # 组织方
+    participants = db.Column(db.Text, nullable=True)  # 参与人员
+    drill_scenario = db.Column(db.Text, nullable=True)  # 演练场景
+    drill_process = db.Column(db.Text, nullable=True)  # 演练过程
+    issues_found = db.Column(db.Text, nullable=True)  # 发现问题
+    improvement_measures = db.Column(db.Text, nullable=True)  # 改进措施
+    overall_evaluation = db.Column(db.String(20), nullable=True)  # 总体评价：优秀/良好/合格/不合格
+    status = db.Column(db.String(20), default='planned')  # 状态：planned/in_progress/completed
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    remark = db.Column(db.Text, nullable=True)
+    
+    plan = db.relationship('EmergencyPlan', backref='drills')
+
+# 应急小组模型
+class EmergencyTeam(db.Model):
+    __tablename__ = 'emergency_team'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    team_no = db.Column(db.String(50), nullable=False, unique=True)  # 小组编号
+    team_name = db.Column(db.String(100), nullable=False)  # 小组名称
+    team_type = db.Column(db.String(50), nullable=True)  # 小组类型：指挥组/技术组/保障组/联络组/其他
+    dept_name = db.Column(db.String(100), nullable=True)  # 所属部门
+    leader_name = db.Column(db.String(50), nullable=True)  # 组长姓名
+    leader_phone = db.Column(db.String(20), nullable=True)  # 组长电话
+    members = db.Column(db.Text, nullable=True)  # 成员列表(JSON格式)
+    responsibilities = db.Column(db.Text, nullable=True)  # 职责描述
+    response_scope = db.Column(db.Text, nullable=True)  # 响应范围
+    contact_info = db.Column(db.Text, nullable=True)  # 联系方式
+    status = db.Column(db.String(20), default='active')  # 状态：active/inactive
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    remark = db.Column(db.Text, nullable=True)
+
 # 人员系统权限矩阵模型（按人员-系统维度）
 class PersonSystemPermissionMatrix(db.Model):
     __tablename__ = 'person_system_permission_matrix'
@@ -512,4 +693,32 @@ class PersonSystemPermissionMatrix(db.Model):
     can_config = db.Column(db.Integer, default=0)
     permission_level = db.Column(db.String(20), default='basic')
     description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+# AI对话会话模型
+class ChatSession(db.Model):
+    __tablename__ = 'chat_session'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    title = db.Column(db.String(100), default='新对话')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    messages = db.relationship('ChatMessage', backref='session', lazy='dynamic', order_by='ChatMessage.created_at', cascade='all, delete-orphan')
+
+
+# AI对话消息模型
+class ChatMessage(db.Model):
+    __tablename__ = 'chat_message'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, db.ForeignKey('chat_session.id'), nullable=False)
+    role = db.Column(db.String(20), nullable=False)  # 'user' or 'assistant'
+    content = db.Column(db.Text, nullable=False)
+    has_sql = db.Column(db.Boolean, default=False)
+    sql_query = db.Column(db.Text, nullable=True)
+    has_result = db.Column(db.Boolean, default=False)
+    result_summary = db.Column(db.String(200), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

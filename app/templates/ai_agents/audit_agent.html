@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}稽查助手 - AI Agent{% endblock %}
+
+{% block content %}
+<div class="mi-page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-shield-check"></i> 稽查助手</h1>
+        <p style="color:var(--text-hint);font-size:14px;margin-top:6px;">AI智能分析稽查任务，生成检查要点和整改建议</p>
+    </div>
+    <a href="{{ url_for('ai_agents.index') }}" class="mi-btn mi-btn-default"><i class="bi bi-arrow-left"></i> 返回工作台</a>
+</div>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;min-height:600px;">
+    <!-- 左侧：任务选择 -->
+    <div class="mi-card">
+        <div class="mi-card-header"><i class="bi bi-list-task"></i> 稽查任务</div>
+        <div class="mi-card-body" style="padding:12px;max-height:600px;overflow-y:auto;">
+            <!-- 稽查类型快速选择 -->
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:var(--text-hint);margin-bottom:8px;font-weight:500;">按类型查看检查清单</div>
+                {% for at in audit_types %}
+                <button class="mi-btn mi-btn-ghost mi-btn-sm" style="margin:2px;width:calc(50% - 4px);" onclick="loadChecklist('{{ at }}')">{{ at }}</button>
+                {% endfor %}
+            </div>
+            <div style="height:1px;background:var(--border-light);margin:12px 0;"></div>
+            <div style="font-size:12px;color:var(--text-hint);margin-bottom:8px;font-weight:500;">选择任务进行分析</div>
+            {% for task in tasks %}
+            <div class="task-item" id="task-{{ task.id }}" onclick="selectTask({{ task.id }})" 
+                 style="padding:10px 12px;border-radius:8px;cursor:pointer;transition:var(--transition);margin-bottom:6px;border:1px solid var(--border-light);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                    <span style="font-size:12px;color:var(--text-hint);">{{ task.task_no }}</span>
+                    {% if task.status == 'pending' %}
+                    <span class="mi-badge mi-badge-warning" style="font-size:10px;">待处理</span>
+                    {% elif task.status == 'in_progress' %}
+                    <span class="mi-badge mi-badge-info" style="font-size:10px;">进行中</span>
+                    {% elif task.status == 'completed' %}
+                    <span class="mi-badge mi-badge-success" style="font-size:10px;">已完成</span>
+                    {% endif %}
+                </div>
+                <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ task.task_title }}</div>
+                <div style="font-size:11px;color:var(--text-hint);margin-top:4px;">
+                    <span class="mi-badge mi-badge-default" style="font-size:10px;">{{ task.task_type }}</span>
+                    {% if task.dept_name %}<span style="margin-left:4px;">{{ task.dept_name }}</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+            {% if not tasks %}
+            <div style="text-align:center;padding:20px;color:var(--text-hint);font-size:13px;">
+                <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px;"></i>
+                暂无稽查任务
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- 右侧：分析结果 -->
+    <div class="mi-card">
+        <div class="mi-card-header" style="justify-content:space-between;">
+            <span><i class="bi bi-chat-dots"></i> <span id="resultTitle">分析结果</span></span>
+            <div style="display:flex;gap:6px;">
+                <button id="btnSuggest" class="mi-btn mi-btn-ghost mi-btn-sm" style="display:none;" onclick="generateSuggest()"><i class="bi bi-lightbulb"></i> 生成整改建议</button>
+                <button id="btnDraft" class="mi-btn mi-btn-ghost mi-btn-sm" style="display:none;" onclick="generateDraft()"><i class="bi bi-file-earmark-text"></i> 生成记录草稿</button>
+            </div>
+        </div>
+        <div class="mi-card-body" id="resultArea" style="min-height:400px;max-height:600px;overflow-y:auto;">
+            <div style="text-align:center;padding:60px 20px;color:var(--text-hint);">
+                <i class="bi bi-shield-check" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.3;"></i>
+                <p style="font-size:15px;margin-bottom:8px;">选择左侧稽查任务开始分析</p>
+                <p style="font-size:13px;">或点击稽查类型查看检查清单</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 整改建议输入弹窗 -->
+<div id="suggestModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:none;align-items:center;justify-content:center;">
+    <div class="mi-card" style="width:500px;max-width:90vw;">
+        <div class="mi-card-header"><i class="bi bi-lightbulb"></i> 输入稽查发现</div>
+        <div class="mi-card-body">
+            <textarea id="findingsInput" class="mi-input mi-textarea" placeholder="请描述稽查中发现的问题..." style="min-height:150px;"></textarea>
+            <div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end;">
+                <button class="mi-btn mi-btn-default" onclick="closeSuggestModal()">取消</button>
+                <button class="mi-btn mi-btn-primary" onclick="submitSuggest()"><i class="bi bi-lightbulb"></i> 生成建议</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+var selectedTaskId = null;
+var currentAction = null;
+
+function selectTask(taskId) {
+    selectedTaskId = taskId;
+    document.querySelectorAll('.task-item').forEach(function(el) {
+        el.style.borderColor = 'var(--border-light)';
+        el.style.background = '';
+    });
+    var el = document.getElementById('task-' + taskId);
+    if (el) {
+        el.style.borderColor = 'var(--accent)';
+        el.style.background = 'var(--accent-light)';
+    }
+    document.getElementById('resultTitle').textContent = '分析中...';
+    document.getElementById('btnSuggest').style.display = '';
+    document.getElementById('btnDraft').style.display = '';
+    
+    // 流式分析
+    currentAction = 'analyze';
+    var resultArea = document.getElementById('resultArea');
+    resultArea.innerHTML = '<div style="text-align:center;padding:40px;"><div class="mi-spinner" style="margin:0 auto;"></div><p style="margin-top:12px;color:var(--text-hint);">AI正在分析稽查任务...</p></div>';
+    
+    fetch('{{ url_for("ai_agents.audit_analyze_stream") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({task_id: taskId, action: 'analyze'})
+    }).then(function(response) {
+        resultArea.innerHTML = '';
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        
+        function read() {
+            reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                
+                lines.forEach(function(line) {
+                    if (!line.startsWith('data: ')) return;
+                    try {
+                        var data = JSON.parse(line.slice(6));
+                        if (data.content) {
+                            resultArea.innerHTML += data.content;
+                            resultArea.scrollTop = resultArea.scrollHeight;
+                        } else if (data.done) {
+                            // 渲染Markdown
+                            resultArea.innerHTML = renderMarkdown(resultArea.textContent);
+                        } else if (data.error) {
+                            resultArea.innerHTML += '<div class="mi-alert mi-alert-danger" style="margin-top:12px;"><i class="bi bi-exclamation-circle-fill"></i> ' + data.error + '</div>';
+                        }
+                    } catch(e) {}
+                });
+                read();
+            });
+        }
+        read();
+    }).catch(function(err) {
+        resultArea.innerHTML = '<div class="mi-alert mi-alert-danger"><i class="bi bi-exclamation-circle-fill"></i> 请求失败: ' + err.message + '</div>';
+    });
+}
+
+function loadChecklist(auditType) {
+    document.getElementById('resultTitle').textContent = auditType + ' - 检查清单';
+    document.getElementById('btnSuggest').style.display = 'none';
+    document.getElementById('btnDraft').style.display = 'none';
+    
+    fetch('{{ url_for("ai_agents.audit_get_checklist") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({audit_type: auditType})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success && data.checklist) {
+            var html = '<h3 style="margin-bottom:12px;">' + auditType + '检查清单</h3>';
+            html += '<p style="color:var(--text-hint);font-size:13px;margin-bottom:16px;">重点关注：' + (data.checklist.focus || '') + '</p>';
+            data.checklist.checkpoints.forEach(function(cp, i) {
+                var riskColor = cp.risk === 'high' ? 'var(--danger)' : 'var(--warning)';
+                var riskLabel = cp.risk === 'high' ? '高风险' : '中风险';
+                html += '<div style="padding:12px;border:1px solid var(--border-light);border-radius:8px;margin-bottom:8px;">';
+                html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">';
+                html += '<span style="font-weight:600;font-size:14px;">' + (i+1) + '. ' + cp.item + '</span>';
+                html += '<span class="mi-badge" style="background:' + riskColor + '15;color:' + riskColor + ';font-size:11px;">' + riskLabel + '</span>';
+                html += '</div>';
+                html += '<div style="font-size:13px;color:var(--text-secondary);"><i class="bi bi-search" style="margin-right:4px;"></i>' + cp.method + '</div>';
+                html += '</div>';
+            });
+            document.getElementById('resultArea').innerHTML = html;
+        }
+    });
+}
+
+function generateSuggest() {
+    if (!selectedTaskId) return;
+    var modal = document.getElementById('suggestModal');
+    modal.style.display = 'flex';
+    currentAction = 'suggest';
+}
+
+function generateDraft() {
+    if (!selectedTaskId) return;
+    var modal = document.getElementById('suggestModal');
+    modal.style.display = 'flex';
+    currentAction = 'draft';
+}
+
+function closeSuggestModal() {
+    document.getElementById('suggestModal').style.display = 'none';
+}
+
+function submitSuggest() {
+    var findings = document.getElementById('findingsInput').value.trim();
+    if (!findings) { showToast('请输入稽查发现', 'warning'); return; }
+    closeSuggestModal();
+    
+    var action = currentAction || 'suggest';
+    document.getElementById('resultTitle').textContent = action === 'suggest' ? '整改建议' : '记录草稿';
+    
+    var resultArea = document.getElementById('resultArea');
+    resultArea.innerHTML = '<div style="text-align:center;padding:40px;"><div class="mi-spinner" style="margin:0 auto;"></div><p style="margin-top:12px;color:var(--text-hint);">AI正在生成...</p></div>';
+    
+    fetch('{{ url_for("ai_agents.audit_analyze_stream") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({task_id: selectedTaskId, action: action, findings: findings, audit_type: '', audit_scope: ''})
+    }).then(function(response) {
+        resultArea.innerHTML = '';
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        
+        function read() {
+            reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                lines.forEach(function(line) {
+                    if (!line.startsWith('data: ')) return;
+                    try {
+                        var data = JSON.parse(line.slice(6));
+                        if (data.content) {
+                            resultArea.innerHTML += data.content;
+                            resultArea.scrollTop = resultArea.scrollHeight;
+                        } else if (data.done) {
+                            resultArea.innerHTML = renderMarkdown(resultArea.textContent);
+                        } else if (data.error) {
+                            resultArea.innerHTML += '<div class="mi-alert mi-alert-danger" style="margin-top:12px;">' + data.error + '</div>';
+                        }
+                    } catch(e) {}
+                });
+                read();
+            });
+        }
+        read();
+    });
+}
+</script>
+{% endblock %}

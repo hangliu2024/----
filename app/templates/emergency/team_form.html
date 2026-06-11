@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{% if item %}编辑小组{% else %}新增小组{% endif %} - 应急管理{% endblock %}
+{% block content %}
+<div class="mi-page-header">
+    <h1 class="mi-page-title"><i class="bi bi-people-fill"></i> {% if item %}编辑小组{% else %}新增小组{% endif %}</h1>
+</div>
+<div class="mi-card"><div class="mi-card-body">
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 24px">
+            <div class="mi-form-group"><label class="mi-label">小组编号 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="team_no" value="{{ item.team_no if item else '' }}" class="mi-input" required placeholder="如: ET-2026-001"></div>
+            <div class="mi-form-group"><label class="mi-label">小组名称 <span style="color:var(--danger)">*</span></label>
+                <input type="text" name="team_name" value="{{ item.team_name if item else '' }}" class="mi-input" required></div>
+            <div class="mi-form-group"><label class="mi-label">小组类型</label>
+                <select name="team_type" class="mi-input mi-select"><option value="">请选择</option>
+                    {% for t in ['指挥组','技术组','保障组','联络组','其他'] %}<option value="{{ t }}" {% if item and item.team_type==t %}selected{% endif %}>{{ t }}</option>{% endfor %}
+                </select></div>
+            <div class="mi-form-group"><label class="mi-label">所属部门</label>
+                <input type="text" name="dept_name" value="{{ item.dept_name if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">组长姓名</label>
+                <input type="text" name="leader_name" value="{{ item.leader_name if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">组长电话</label>
+                <input type="text" name="leader_phone" value="{{ item.leader_phone if item else '' }}" class="mi-input"></div>
+            <div class="mi-form-group"><label class="mi-label">状态</label>
+                <select name="status" class="mi-input mi-select">
+                    {% for s in [('active','启用'),('inactive','停用')] %}<option value="{{ s[0] }}" {% if item and item.status==s[0] %}selected{% endif %}>{{ s[1] }}</option>{% endfor %}
+                </select></div>
+        </div>
+        <div class="mi-form-group"><label class="mi-label">成员列表</label>
+            <textarea name="members" class="mi-input mi-textarea" rows="3" placeholder="每行一个成员信息">{{ item.members if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">职责描述</label>
+            <textarea name="responsibilities" class="mi-input mi-textarea" rows="3">{{ item.responsibilities if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">响应范围</label>
+            <textarea name="response_scope" class="mi-input mi-textarea" rows="2">{{ item.response_scope if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">联系方式</label>
+            <textarea name="contact_info" class="mi-input mi-textarea" rows="2">{{ item.contact_info if item else '' }}</textarea></div>
+        <div class="mi-form-group"><label class="mi-label">备注</label>
+            <textarea name="remark" class="mi-input mi-textarea" rows="2">{{ item.remark if item else '' }}</textarea></div>
+        <div style="display:flex;gap:12px;padding-top:16px;border-top:1px solid var(--border-light)">
+            <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 保存</button>
+            <a href="{{ url_for('emergency.teams') }}" class="mi-btn mi-btn-default"><i class="bi bi-x-lg"></i> 取消</a>
+        </div>
+    </form>
+</div></div>
+{% endblock %}

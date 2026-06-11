@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}风险分析助手 - AI Agent{% endblock %}
+
+{% block content %}
+<div class="mi-page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-exclamation-diamond"></i> 风险分析助手</h1>
+        <p style="color:var(--text-hint);font-size:14px;margin-top:6px;">智能分析潜在风险，提供预警和处置建议</p>
+    </div>
+    <a href="{{ url_for('ai_agents.index') }}" class="mi-btn mi-btn-default"><i class="bi bi-arrow-left"></i> 返回工作台</a>
+</div>
+
+<div style="display:grid;grid-template-columns:340px 1fr;gap:20px;min-height:600px;">
+    <!-- 左侧：风险类型选择 -->
+    <div class="mi-card">
+        <div class="mi-card-header"><i class="bi bi-exclamation-triangle"></i> 风险分析类型</div>
+        <div class="mi-card-body" style="padding:12px;">
+            <button class="mi-btn mi-btn-primary" style="width:100%;margin-bottom:10px;justify-content:center;" onclick="analyzeRisk('all')">
+                <i class="bi bi-lightning"></i> 全面风险分析
+            </button>
+            <div style="height:1px;background:var(--border-light);margin:8px 0;"></div>
+            <div style="font-size:12px;color:var(--text-hint);margin-bottom:8px;font-weight:500;">单项分析</div>
+            
+            <div class="risk-option" onclick="analyzeRisk('resignation')" style="padding:12px;border:1px solid var(--border-light);border-radius:8px;cursor:pointer;margin-bottom:8px;transition:var(--transition);">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <i class="bi bi-person-x" style="color:var(--danger);"></i>
+                    <span style="font-weight:500;font-size:14px;">离职人员风险</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-hint);">分析离职人员涉密资产清理情况</div>
+            </div>
+            
+            <div class="risk-option" onclick="analyzeRisk('unassigned')" style="padding:12px;border:1px solid var(--border-light);border-radius:8px;cursor:pointer;margin-bottom:8px;transition:var(--transition);">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <i class="bi bi-pc-display" style="color:var(--warning);"></i>
+                    <span style="font-weight:500;font-size:14px;">未分配资产风险</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-hint);">检测未分配使用人的涉密电脑</div>
+            </div>
+            
+            <div class="risk-option" onclick="analyzeRisk('permission')" style="padding:12px;border:1px solid var(--border-light);border-radius:8px;cursor:pointer;margin-bottom:8px;transition:var(--transition);">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                    <i class="bi bi-key" style="color:var(--info);"></i>
+                    <span style="font-weight:500;font-size:14px;">权限配置风险</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-hint);">识别权限配置异常和越权风险</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：分析结果 -->
+    <div class="mi-card">
+        <div class="mi-card-header" style="justify-content:space-between;">
+            <span><i class="bi bi-shield-exclamation"></i> <span id="riskTitle">风险分析结果</span></span>
+            <button class="mi-btn mi-btn-ghost mi-btn-sm" onclick="copyResult()"><i class="bi bi-clipboard"></i> 复制</button>
+        </div>
+        <div class="mi-card-body" id="riskArea" style="min-height:500px;max-height:700px;overflow-y:auto;">
+            <div style="text-align:center;padding:60px 20px;color:var(--text-hint);">
+                <i class="bi bi-exclamation-diamond" style="font-size:48px;display:block;margin-bottom:16px;opacity:0.3;"></i>
+                <p style="font-size:15px;margin-bottom:8px;">选择风险分析类型开始分析</p>
+                <p style="font-size:13px;">AI将自动检测潜在风险并生成处置建议</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function analyzeRisk(riskType) {
+    var typeNames = {all: '全面风险分析', resignation: '离职人员风险分析', unassigned: '未分配资产风险分析', permission: '权限配置风险分析'};
+    document.getElementById('riskTitle').textContent = typeNames[riskType] || '风险分析';
+    
+    // 高亮选中项
+    document.querySelectorAll('.risk-option').forEach(function(el) {
+        el.style.borderColor = 'var(--border-light)';
+        el.style.background = '';
+    });
+    
+    var riskArea = document.getElementById('riskArea');
+    riskArea.innerHTML = '<div style="text-align:center;padding:40px;"><div class="mi-spinner" style="margin:0 auto;"></div><p style="margin-top:12px;color:var(--text-hint);">AI正在分析风险数据...</p></div>';
+    
+    fetch('{{ url_for("ai_agents.risk_analyze") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({risk_type: riskType})
+    }).then(function(response) {
+        riskArea.innerHTML = '';
+        var reader = response.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = '';
+        function read() {
+            reader.read().then(function(result) {
+                if (result.done) return;
+                buffer += decoder.decode(result.value, {stream: true});
+                var lines = buffer.split('\n');
+                buffer = lines.pop();
+                lines.forEach(function(line) {
+                    if (!line.startsWith('data: ')) return;
+                    try {
+                        var data = JSON.parse(line.slice(6));
+                        if (data.content) { riskArea.innerHTML += data.content; riskArea.scrollTop = riskArea.scrollHeight; }
+                        else if (data.done) { riskArea.innerHTML = renderMarkdown(riskArea.textContent); }
+                        else if (data.error) { riskArea.innerHTML += '<div class="mi-alert mi-alert-danger">' + data.error + '</div>'; }
+                    } catch(e) {}
+                });
+                read();
+            });
+        }
+        read();
+    });
+}
+
+function copyResult() {
+    var text = document.getElementById('riskArea').textContent;
+    navigator.clipboard.writeText(text).then(function() { showToast('已复制到剪贴板', 'success'); });
+}
+</script>
+{% endblock %}

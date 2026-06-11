@@ -1,105 +1,81 @@
 {% extends "base.html" %}
 
-{% block title %}创建稽查任务{% endblock %}
+{% block title %}创建稽查任务 - 资产管理系统{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-plus"></i> 创建稽查任务
-                    </h3>
-                </div>
-                <div class="card-body">
-                    <form method="POST" action="{{ url_for('audit.create_task') }}">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="task_title">任务标题 <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="task_title" name="task_title" required>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="task_type">任务类型 <span class="text-danger">*</span></label>
-                                    <select class="form-control" id="task_type" name="task_type" required>
-                                        <option value="security">安全稽查</option>
-                                        <option value="asset">资产稽查</option>
-                                        <option value="compliance">合规稽查</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label for="priority">优先级</label>
-                                    <select class="form-control" id="priority" name="priority">
-                                        <option value="low">低</option>
-                                        <option value="normal" selected>普通</option>
-                                        <option value="high">高</option>
-                                        <option value="urgent">紧急</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-plus-circle"></i> 创建稽查任务</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">创建并分配新的稽查任务</p>
+    </div>
+    <div class="mi-page-actions">
+        <a href="{{ url_for('audit.task_list') }}" class="mi-btn mi-btn-default mi-btn-sm"><i class="bi bi-arrow-left"></i> 返回列表</a>
+    </div>
+</div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="assignee_id">被分配人 <span class="text-danger">*</span></label>
-                                    <select class="form-control" id="assignee_id" name="assignee_id" required>
-                                        <option value="">请选择</option>
-                                        {% for user in users %}
-                                        <option value="{{ user.id }}">{{ user.username }} ({{ user.email }})</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="deadline">截止时间</label>
-                                    <input type="datetime-local" class="form-control" id="deadline" name="deadline">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label for="dept_id">所属部门</label>
-                                    <select class="form-control" id="dept_id" name="dept_id">
-                                        <option value="">请选择</option>
-                                        {% for dept in departments %}
-                                        <option value="{{ dept.id }}">{{ dept.name }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="task_content">任务内容 <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="task_content" name="task_content" rows="4" required></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="task_requirement">任务要求</label>
-                            <textarea class="form-control" id="task_requirement" name="task_requirement" rows="3"></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> 创建任务
-                            </button>
-                            <a href="{{ url_for('audit.task_list') }}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> 取消
-                            </a>
-                        </div>
-                    </form>
-                </div>
+<div class="mi-card" style="max-width:960px">
+    <form method="POST" action="{{ url_for('audit.create_task') }}" class="mi-card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px">
+            <div class="mi-form-group" style="grid-column:1/-1">
+                <label class="mi-label">任务标题 <span style="color:var(--danger)">*</span></label>
+                <input type="text" class="mi-input" id="task_title" name="task_title" required placeholder="请输入任务标题">
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">任务类型 <span style="color:var(--danger)">*</span></label>
+                <select class="mi-input mi-select" id="task_type" name="task_type" required>
+                    <option value="">请选择任务类型</option>
+                    <option value="anti_leak">防泄密稽查</option>
+                    <option value="anti_theft">防盗窃稽查</option>
+                    <option value="anti_hack">防黑客稽查</option>
+                    <option value="anti_spy">防间谍稽查</option>
+                    <option value="anti_accident">防意外稽查</option>
+                    <option value="comprehensive">综合稽查</option>
+                </select>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">优先级</label>
+                <select class="mi-input mi-select" id="priority" name="priority">
+                    <option value="low">低</option>
+                    <option value="normal" selected>普通</option>
+                    <option value="high">高</option>
+                    <option value="urgent">紧急</option>
+                </select>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">被分配人 <span style="color:var(--danger)">*</span></label>
+                <select class="mi-input mi-select" id="assignee_id" name="assignee_id" required>
+                    <option value="">请选择</option>
+                    {% for user in users %}
+                    <option value="{{ user.id }}">{{ user.username }} ({{ user.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">截止时间</label>
+                <input type="datetime-local" class="mi-input" id="deadline" name="deadline">
+            </div>
+            <div class="mi-form-group">
+                <label class="mi-label">所属部门</label>
+                <select class="mi-input mi-select" id="dept_id" name="dept_id">
+                    <option value="">请选择</option>
+                    {% for dept in departments %}
+                    <option value="{{ dept.id }}">{{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mi-form-group" style="grid-column:1/-1">
+                <label class="mi-label">任务内容 <span style="color:var(--danger)">*</span></label>
+                <textarea class="mi-input mi-textarea" id="task_content" name="task_content" rows="4" required placeholder="请描述任务内容"></textarea>
+            </div>
+            <div class="mi-form-group" style="grid-column:1/-1">
+                <label class="mi-label">任务要求</label>
+                <textarea class="mi-input mi-textarea" id="task_requirement" name="task_requirement" rows="3" placeholder="请描述任务要求（可选）"></textarea>
             </div>
         </div>
-    </div>
+        <div style="display:flex;gap:8px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border-light)">
+            <button type="submit" class="mi-btn mi-btn-primary"><i class="bi bi-check-lg"></i> 创建任务</button>
+            <a href="{{ url_for('audit.task_list') }}" class="mi-btn mi-btn-default">取消</a>
+        </div>
+    </form>
 </div>
 {% endblock %}

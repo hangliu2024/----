@@ -2,275 +2,212 @@
 
 {% block title %}登录 - 资产管理系统{% endblock %}
 
-{% block content %}
+{% block extra_css %}
 <style>
-    .login-container {
-        min-height: 80vh;
+    .mi-nav, .mi-footer { display: none !important; }
+    .mi-main {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
+        background: var(--bg);
+    }
+    
+    .login-wrap {
+        width: 100%;
+        max-width: 400px;
+        padding: 20px;
+    }
+    
+    .login-logo {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    
+    .login-logo-icon {
+        width: 64px;
+        height: 64px;
+        background: var(--accent);
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+    }
+    
+    .login-logo-icon i {
+        font-size: 28px;
+        color: white;
+    }
+    
+    .login-logo h1 {
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 4px;
+    }
+    
+    .login-logo p {
+        font-size: 14px;
+        color: var(--text-hint);
+        margin: 0;
     }
     
     .login-card {
-        max-width: 450px;
-        width: 100%;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.95) 100%);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-        animation: slideUp 0.6s ease-out;
+        background: var(--bg-white);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-light);
+        box-shadow: var(--shadow-md);
+        padding: 32px;
     }
     
-    @keyframes slideUp {
-        from {
-            opacity: 0;
-            transform: translateY(50px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .login-field {
+        margin-bottom: 20px;
     }
     
-    .login-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 2.5rem 2rem;
-        text-align: center;
+    .login-field label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+    
+    .login-field .mi-input {
+        height: 48px;
+        font-size: 15px;
+        padding: 0 16px;
+    }
+    
+    .login-field .mi-input.has-icon {
+        padding-left: 44px;
+    }
+    
+    .login-input-wrap {
         position: relative;
-        overflow: hidden;
     }
     
-    .login-header::before {
-        content: '';
+    .login-input-wrap i {
         position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-        animation: rotate 20s linear infinite;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+        color: var(--text-hint);
+        pointer-events: none;
     }
     
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+    .login-options {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
     }
     
-    .login-header h2 {
-        color: white;
-        font-weight: 700;
-        font-size: 2rem;
-        margin: 0;
-        position: relative;
-        z-index: 1;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    .login-remember {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--text-secondary);
+        cursor: pointer;
     }
     
-    .login-icon {
-        font-size: 4rem;
-        color: white;
-        margin-bottom: 1rem;
-        position: relative;
-        z-index: 1;
-        animation: bounce 2s ease-in-out infinite;
-    }
-    
-    @keyframes bounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-10px); }
-    }
-    
-    .login-body {
-        padding: 2.5rem;
-    }
-    
-    .form-floating {
-        margin-bottom: 1.5rem;
-    }
-    
-    .form-floating .form-control {
-        border: 2px solid #e9ecef;
-        border-radius: 12px;
-        padding: 1rem 1rem 1rem 3rem;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        background: #f8f9fa;
-    }
-    
-    .form-floating .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        background: white;
-    }
-    
-    .input-group-text {
-        background: #f8f9fa;
-        border: 2px solid #e9ecef;
-        border-right: none;
-        border-radius: 12px 0 0 12px;
-        color: #667eea;
-        font-size: 1.2rem;
-    }
-    
-    .input-group .form-control {
-        border-left: none;
-        border-radius: 0 12px 12px 0;
+    .login-remember input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent);
+        cursor: pointer;
     }
     
     .login-btn {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        padding: 1rem;
-        font-size: 1.1rem;
+        width: 100%;
+        height: 48px;
+        font-size: 16px;
         font-weight: 600;
-        border-radius: 12px;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
     }
     
-    .login-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
-    }
-    
-    .login-btn::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255, 255, 255, 0.3);
-        transition: all 0.4s ease;
-        transform: translate(-50%, -50%);
-    }
-    
-    .login-btn:hover::after {
-        width: 300px;
-        height: 300px;
-    }
-    
-    .divider {
-        display: flex;
-        align-items: center;
+    .login-footer {
         text-align: center;
-        margin: 1.5rem 0;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border-light);
     }
     
-    .divider::before,
-    .divider::after {
-        content: '';
-        flex: 1;
-        border-bottom: 2px solid #e9ecef;
+    .login-footer p {
+        font-size: 13px;
+        color: var(--text-hint);
+        margin: 0;
     }
     
-    .divider span {
-        padding: 0 1rem;
-        color: #6c757d;
-        font-size: 0.9rem;
+    .login-error {
+        font-size: 13px;
+        color: var(--danger);
+        margin-top: 6px;
     }
     
-    .register-link {
-        text-align: center;
-        margin-top: 1.5rem;
-        padding-top: 1.5rem;
-        border-top: 2px solid #e9ecef;
-    }
-    
-    .register-link a {
-        color: #667eea;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .register-link a:hover {
-        color: #764ba2;
-        text-decoration: underline;
-    }
-    
-    .remember-me {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin: 1rem 0;
-    }
-    
-    .form-check-input {
-        width: 1.3em;
-        height: 1.3em;
-        cursor: pointer;
-        border: 2px solid #e9ecef;
-        transition: all 0.3s ease;
-    }
-    
-    .form-check-input:checked {
-        background-color: #667eea;
-        border-color: #667eea;
-    }
-    
-    .form-check-label {
-        font-weight: 500;
-        color: #495057;
-        cursor: pointer;
+    @media (max-width: 480px) {
+        .login-card { padding: 24px 20px; }
     }
 </style>
+{% endblock %}
 
-<div class="login-container">
-    <div class="login-card">
-        <div class="login-header">
-            <i class="bi bi-person-circle login-icon"></i>
-            <h2>欢迎回来</h2>
+{% block content %}
+<div class="login-wrap">
+    <div class="login-logo">
+        <div class="login-logo-icon">
+            <i class="bi bi-box-seam-fill"></i>
         </div>
-        <div class="login-body">
-            <form method="POST" action="">
-                {{ form.hidden_tag() }}
-                
-                <div class="input-group mb-3">
-                    <span class="input-group-text">
-                        <i class="bi bi-envelope"></i>
-                    </span>
-                    {{ form.email(class="form-control form-control-lg", placeholder="请输入邮箱地址") }}
+        <h1>信息资产管理系统</h1>
+        <p>请登录以继续</p>
+    </div>
+    
+    <div class="login-card">
+        <form method="POST" action="">
+            {{ form.hidden_tag() }}
+            
+            <div class="login-field">
+                <label>邮箱地址</label>
+                <div class="login-input-wrap">
+                    <i class="bi bi-envelope"></i>
+                    {{ form.email(class="mi-input has-icon", placeholder="请输入邮箱") }}
                 </div>
                 {% if form.email.errors %}
-                    <div class="alert alert-danger py-2">
-                        {% for error in form.email.errors %}
-                            <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
+                    {% for error in form.email.errors %}
+                        <div class="login-error">{{ error }}</div>
+                    {% endfor %}
                 {% endif %}
-                
-                <div class="input-group mb-3">
-                    <span class="input-group-text">
-                        <i class="bi bi-lock"></i>
-                    </span>
-                    {{ form.password(class="form-control form-control-lg", placeholder="请输入密码") }}
+            </div>
+            
+            <div class="login-field">
+                <label>密码</label>
+                <div class="login-input-wrap">
+                    <i class="bi bi-lock"></i>
+                    {{ form.password(class="mi-input has-icon", placeholder="请输入密码") }}
                 </div>
                 {% if form.password.errors %}
-                    <div class="alert alert-danger py-2">
-                        {% for error in form.password.errors %}
-                            <small>{{ error }}</small>
-                        {% endfor %}
-                    </div>
+                    {% for error in form.password.errors %}
+                        <div class="login-error">{{ error }}</div>
+                    {% endfor %}
                 {% endif %}
-                
-                <div class="remember-me">
-                    {{ form.remember(class="form-check-input") }}
-                    {{ form.remember.label(class="form-check-label") }}
-                </div>
-                
-                <button type="submit" class="btn btn-primary login-btn w-100">
-                    <i class="bi bi-box-arrow-in-right me-2"></i> 登录
-                </button>
-            </form>
-            
-            <div class="register-link">
-                <small class="text-muted">还没有账号？</small>
-                <a href="{{ url_for('auth.register') }}" class="ms-2">立即注册</a>
             </div>
+            
+            <div class="login-options">
+                <label class="login-remember">
+                    {{ form.remember() }} {{ form.remember.label.text }}
+                </label>
+            </div>
+            
+            <button type="submit" class="mi-btn mi-btn-primary login-btn">
+                登录
+            </button>
+        </form>
+        
+        <div class="login-footer">
+            <p>如需开通账号，请联系系统管理员</p>
         </div>
     </div>
 </div>

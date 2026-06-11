@@ -1,107 +1,80 @@
 {% extends "base.html" %}
 
-{% block title %}任务统计{% endblock %}
+{% block title %}稽查统计 - 资产管理系统{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <!-- 统计卡片 -->
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <h5 class="card-title">总任务数</h5>
-                    <h2 class="display-4">{{ total_tasks }}</h2>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+    <div>
+        <h1 class="mi-page-title"><i class="bi bi-bar-chart"></i> 稽查统计</h1>
+        <p style="font-size:14px;color:var(--text-hint);margin:4px 0 0">稽查任务和记录的统计分析</p>
+    </div>
+</div>
+
+<!-- 统计卡片 -->
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px">
+    <div class="mi-card" style="padding:20px;border-left:3px solid var(--accent)">
+        <div style="font-size:12px;color:var(--text-hint);margin-bottom:4px">总任务数</div>
+        <div style="font-size:32px;font-weight:700;color:var(--text-primary)">{{ total_tasks or 0 }}</div>
+    </div>
+    <div class="mi-card" style="padding:20px;border-left:3px solid var(--text-hint)">
+        <div style="font-size:12px;color:var(--text-hint);margin-bottom:4px">待处理</div>
+        <div style="font-size:32px;font-weight:700;color:var(--text-primary)">{{ pending_tasks or 0 }}</div>
+    </div>
+    <div class="mi-card" style="padding:20px;border-left:3px solid var(--info)">
+        <div style="font-size:12px;color:var(--text-hint);margin-bottom:4px">进行中</div>
+        <div style="font-size:32px;font-weight:700;color:var(--info)">{{ in_progress_tasks or 0 }}</div>
+    </div>
+    <div class="mi-card" style="padding:20px;border-left:3px solid var(--success)">
+        <div style="font-size:12px;color:var(--text-hint);margin-bottom:4px">已完成</div>
+        <div style="font-size:32px;font-weight:700;color:var(--success)">{{ completed_tasks or 0 }}</div>
+    </div>
+    <div class="mi-card" style="padding:20px;border-left:3px solid var(--danger)">
+        <div style="font-size:12px;color:var(--text-hint);margin-bottom:4px">逾期任务</div>
+        <div style="font-size:32px;font-weight:700;color:var(--danger)">{{ overdue_tasks or 0 }}</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <!-- 按类型统计 -->
+    <div class="mi-card">
+        <h3 style="font-size:16px;font-weight:600;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--border-light)"><i class="bi bi-pie-chart" style="color:var(--accent)"></i> 按任务类型</h3>
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--radius)">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span class="mi-badge mi-badge-danger">安全稽查</span>
                 </div>
+                <span style="font-size:20px;font-weight:700">{{ security_tasks or 0 }}</span>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <h5 class="card-title">待处理</h5>
-                    <h2 class="display-4">{{ pending_count }}</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--radius)">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span class="mi-badge mi-badge-warning">资产稽查</span>
                 </div>
+                <span style="font-size:20px;font-weight:700">{{ asset_tasks or 0 }}</span>
             </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <h5 class="card-title">进行中</h5>
-                    <h2 class="display-4">{{ in_progress_count }}</h2>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--radius)">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span class="mi-badge mi-badge-info">合规稽查</span>
                 </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <h5 class="card-title">已完成</h5>
-                    <h2 class="display-4">{{ completed_count }}</h2>
-                </div>
+                <span style="font-size:20px;font-weight:700">{{ compliance_tasks or 0 }}</span>
             </div>
         </div>
     </div>
 
-    <div class="row mt-4">
-        <!-- 任务类型分布 -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title">任务类型分布</h5>
-                </div>
-                <div class="card-body">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>任务类型</th>
-                                <th>数量</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for task_type, count in type_stats %}
-                            <tr>
-                                <td>
-                                    {% if task_type == 'security' %}
-                                    安全稽查
-                                    {% elif task_type == 'asset' %}
-                                    资产稽查
-                                    {% elif task_type == 'compliance' %}
-                                    合规稽查
-                                    {% else %}
-                                    {{ task_type }}
-                                    {% endif %}
-                                </td>
-                                <td>{{ count }}</td>
-                            </tr>
-                            {% else %}
-                            <tr>
-                                <td colspan="2" class="text-center">暂无数据</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+    <!-- 稽查记录统计 -->
+    <div class="mi-card">
+        <h3 style="font-size:16px;font-weight:600;margin:0 0 16px;padding-bottom:12px;border-bottom:1px solid var(--border-light)"><i class="bi bi-journal-check" style="color:var(--accent)"></i> 稽查记录</h3>
+        <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--radius)">
+                <span style="color:var(--text-secondary)">总记录数</span>
+                <span style="font-size:20px;font-weight:700">{{ total_records or 0 }}</span>
             </div>
-        </div>
-
-        <!-- 逾期任务 -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title">逾期任务</h5>
-                </div>
-                <div class="card-body">
-                    {% if overdue_tasks %}
-                    <ul class="list-group">
-                        {% for task in overdue_tasks %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ task.task_title }}
-                            <span class="badge badge-danger">逾期</span>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                    {% else %}
-                    <p class="text-muted text-center">暂无逾期任务</p>
-                    {% endif %}
-                </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--radius)">
+                <span style="color:var(--text-secondary)">通过</span>
+                <span style="font-size:20px;font-weight:700;color:var(--success)">{{ pass_records or 0 }}</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px;background:var(--bg);border-radius:var(--radius)">
+                <span style="color:var(--text-secondary)">不通过</span>
+                <span style="font-size:20px;font-weight:700;color:var(--danger)">{{ fail_records or 0 }}</span>
             </div>
         </div>
     </div>
